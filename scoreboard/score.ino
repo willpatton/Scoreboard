@@ -11,16 +11,15 @@ void draw_score_home(){
 
    //convert/update the score to 10's:1's digits
    int hom10 = score_home / 10;
-   int hom01 = score_home - hom10;
-   Serial.print("HOME: ");Serial.print(hom10); Serial.print(hom01);Serial.println();
-  
+   int hom01 = score_home - (hom10 * 10);
+   Serial.print("HOME: ");Serial.print(hom10);Serial.print(" ");Serial.print(hom01);Serial.println();
    //render score digits in ASCII format (add 0x30 to each numeric value to get ASCII digits)
    draw(hom10 + 0x30, 6);
    draw(hom01 + 0x30, 5);
 }
 
 /**
- * draw score home
+ * draw score visitors
  */
 void draw_score_visitors(){
 
@@ -32,8 +31,8 @@ void draw_score_visitors(){
 
    //convert/update the score to 10's:1's digits
    int vis10 = score_visitors / 10;
-   int vis01 = score_visitors - vis10;
-   Serial.print("VISITORS: ");Serial.print(vis10); Serial.print(vis01);Serial.println();
+   int vis01 = score_visitors - (vis10 * 10);
+   Serial.print("VISITORS: ");Serial.print(vis10); Serial.print(" ");Serial.print(vis01);Serial.println();
   
    //render score digits in ASCII format (add 0x30 to each numeric value to get ASCII digits)
    draw(vis10 + 0x30, 8);

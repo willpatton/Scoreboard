@@ -1,6 +1,7 @@
 Scoreboard
 ============
 
-#Files
-The main project is in the folder: scoreboard
-The radio remote controller is in the folder scoreboard_remote
+##Files
+The main project is in the folder: scoreboard.
+
+The radio remote controller is in the folder scoreboard_remote.

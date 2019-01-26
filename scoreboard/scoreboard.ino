@@ -42,15 +42,16 @@ Adafruit_NeoPixel digVis10 = Adafruit_NeoPixel(NUMPIXELS, VIS10, NEO_RGB + NEO_K
 char command = NULL;              //this holds the active command.  (e.g. 'c' to start/stop timer. 'h' to increment the home team score
 
 //BUTTONS
-#define BUTTON_VISITOR A15        //MEGA pin
+#define BUTTON_VISITOR A13        //MEGA pin
 #define BUTTON_CLOCK   A14        // "    "
-#define BUTTON_HOME    A13        // "    "
+#define BUTTON_HOME    A15        // "    "
 int8_t buttonH = HIGH;            //home      The state of each button (released = HIGH, pressed = LOW) 
 int8_t buttonV = HIGH;            //visitor    "     "      "     "
 int8_t buttonC = HIGH;            //clock      "     "      "     "
 int32_t buttonH_hold = 0;         //home      The number of milliseconds the button is being held "pressed (LOW)"
 int32_t buttonV_hold = 0;         //visitor    "     "      "     "
 int32_t buttonC_hold = 0;         //clock      "     "      "     "
+uint8_t buttonC_hold_sec = 0;     //button clock time second counter
 
 //SCORING
 int score_home = 0;               //0 to 99
@@ -68,14 +69,16 @@ int sec01 = '0';                  //second 1's
 #define TIMER_TICK 1000           //The number of milliseconds in a timer tick. Used to establish a time base (refresh rate). 
                                   //(1000 = TIMER_TICK updates  1Hz once per second)
                                   //( 100 = TIMER_TICK updates 10Hz 10 times per second)
+//#define CLOCK_RESET 5400000;      //5400000 = 90 min * 60 sec * 1000 milliseconds 
 //#define CLOCK_RESET 3600000;      //3600000 = 60 min * 60 sec * 1000 milliseconds 
-//#define CLOCK_RESET 1200000;      //1200000 = 20 min * 60 sec * 1000 milliseconds 
+#define CLOCK_RESET 1200000;      //1200000 = 20 min * 60 sec * 1000 milliseconds 
 //#define CLOCK_RESET 900000;       // 900000 = 15 min * 60 sec * 1000 milliseconds 
 //#define CLOCK_RESET 600000;       // 600000 = 10 min * 60 sec * 1000 milliseconds 
 //#define CLOCK_RESET 300000;       // 300000 =  5 min * 60 sec * 1000 milliseconds
-#define CLOCK_RESET 60000;        //  60000 =  1 min * 60 sec * 1000 milliseconds
+//#define CLOCK_RESET 60000;        //  60000 =  1 min * 60 sec * 1000 milliseconds
 //#define CLOCK_RESET 30000;        //   2000 =  0 min * 20 sec * 1000 milliseconds
 //#define CLOCK_RESET 20000;        //   2000 =  0 min * 20 sec * 1000 milliseconds
+#define ADD_5_MIN 300000;
 int timerOnOff = 0;               //indicates if clock is ON or OFF. 1 = clock ON (running), 0 = clock OFF (stopped)
 unsigned long timerMillisClock;   //millisecond timer used to keep the clock's time remaining
 unsigned long timerElapsed = 0;   //millisecond timer to keep track of elapsed time (used by clock)
@@ -195,9 +198,9 @@ void loop() {
     buttonC_hold = 0;
     delay(10);        //debounce
   }
-  if (digitalRead(BUTTON_CLOCK) == LOW && buttonC == LOW) { //detect hold
+if (digitalRead(BUTTON_CLOCK) == LOW && buttonC == LOW) { //detect hold
     buttonC_hold++;
-    delay(5); //slow down hold sampling
+    delay(2);         //slow down hold sampling
     if (buttonC_hold > 1000) {
       buttonC_hold = 0;
       command = 'C';  // 'C'lear clock
@@ -207,7 +210,6 @@ void loop() {
   if (digitalRead(BUTTON_VISITOR) == LOW && digitalRead(BUTTON_CLOCK) == LOW && digitalRead(BUTTON_HOME) == LOW) {
     command = 't';    // 't' run test pattern
   }
-
 
 
   /**
@@ -226,6 +228,7 @@ void loop() {
     case 'H' : {score_home = -1;}     //resets score to 0 when 'h' command runs. No break here, continue...
     case 'h' : {
         score_home++;
+        if(score_home > 99){score_home = 0;}
         draw_score_home();
         break;
       }
@@ -233,6 +236,7 @@ void loop() {
     case 'V' : {score_visitors = -1;}  //resets score to 0 when 'v' command runs. No break here, continue...
     case 'v' : {
         score_visitors++;
+        if(score_visitors > 99){score_visitors = 0;}
         draw_score_visitors();
         break;
       }
@@ -250,13 +254,33 @@ void loop() {
           Serial.println("ON");
         } else {
           Serial.println("OFF");
-        } break;
+        } 
+        //reset button timer hold if "c" command detected
+        buttonC_hold_sec = 0; 
+        break;
       }
     //clock reset
     case 'C' : {
-        timerMillisClock = CLOCK_RESET; /*reset clock*/  timerOnOff = 0; /*clear clock to OFF*/ timer2minsec();
+        buttonC_hold_sec++;  //inc this counter each time the 'C' command is detected (about once per second)
+
+        if (buttonC_hold_sec > 1 && buttonC_hold_sec < 3) {
+          timerMillisClock = 0; //CLOCK_RESET; /*reset clock*/ 
+        }
+        if ((buttonC_hold_sec > 3 ) /*&& (buttonC_hold_sec & 0x01)*/) {  // more than N sec, then every odd numbered second
+          timerMillisClock += ADD_5_MIN;
+        }
+        
+        //limit clock to 90 min MAX
+        if (timerMillisClock > 5400000 ) {
+          timerMillisClock = 5400000 ;
+        }
+        
+        timerOnOff = 0; /*clock to OFF*/ 
+        timer2minsec();
         draw_clock();         //refresh clock display after reset or when timer clock is OFF
-        Serial.println("CLOCK RESET");
+        Serial.print("buttonC_hold_sec: "); Serial.print(buttonC_hold_sec);
+        Serial.print(" ");
+        Serial.println("CLOCK RESET TO: "); Serial.println(timerMillisClock);
         break;
       }
     //test or demo mode
@@ -300,6 +324,11 @@ void loop() {
     //if time remaining is zero or less, then do nothing here, return.
     if (timerMillisClock <= 0 ) {
       return;
+    }
+
+    //limit clock to 90 min MAX
+   if (timerMillisClock > 5400000 ) {
+      timerMillisClock = 5400000 ;
     }
 
     //decrement the clock's time remaining by one timer tick

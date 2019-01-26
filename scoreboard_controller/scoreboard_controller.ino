@@ -27,8 +27,8 @@ char command = NULL;
 
 //BUTTONS
 #define BUTTON_CLOCK   A5         // "    "
-#define BUTTON_HOME    A4         // "    "
-#define BUTTON_VISITOR A3         //FEATHER pin
+#define BUTTON_HOME    A3         // "    "
+#define BUTTON_VISITOR A4         //FEATHER pin
 int8_t buttonH = HIGH;            //home      The state of each button (released = HIGH, pressed = LOW) 
 int8_t buttonV = HIGH;            //visitor    "     "      "     "
 int8_t buttonC = HIGH;            //clock      "     "      "     "
@@ -126,7 +126,7 @@ void loop() {
   }
   if (digitalRead(BUTTON_CLOCK) == LOW && buttonC == LOW) { //detect hold
     buttonC_hold++;
-    delay(3);         //slow down hold sampling
+    delay(2);         //slow down hold sampling
     if (buttonC_hold > 1000) {
       buttonC_hold = 0;
       command = 'C';  // 'C'lear clock
