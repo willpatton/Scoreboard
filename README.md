@@ -56,6 +56,7 @@ A minimalist message protocol sends a 1-byte command to indicate what button was
 
 ## Libraries
 The [FastLED](https://github.com/FastLED/FastLED "FastLED") library is used to drive the LEDs. 
+
 The [nRF](https://github.com/tmrh20/RF24/ "nRF") is used to drive the radio transceivers.
 
 ## Files
