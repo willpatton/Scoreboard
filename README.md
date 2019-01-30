@@ -23,7 +23,7 @@ Bill of Materials (Electronics)
 * Protoboard
 
 ### REMOTE
-* Feather 32u4
+* Adafruit Feather 32u4 Basic Proto #2771
 * Switches, Momentary
 * nRF24L01 
 * Battery, LiPo 1200mAh
@@ -56,7 +56,11 @@ A minimalist message protocol sends a 1-byte command to indicate what button was
 
 ## Libraries
 The [FastLED](https://github.com/FastLED/FastLED "FastLED") library is used to drive the LEDs. 
+The [nRF](https://github.com/tmrh20/RF24/ "nRF") is used to drive the radio transceivers.
 
 ## Files
 The main project is in the folder: scoreboard
-The wireless remote is in the folder: remote
+
+The wireless remote is in the folder: scoreboard_controller
+
+
