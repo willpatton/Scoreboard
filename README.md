@@ -11,36 +11,39 @@ Scoreboard: The scoreboard is powered by an Arduino Mega 2560 running at 5VDC (c
 
 Remote:  The remote is powered by a Feather 32u4 (chosen because of its form factor and onboard battery charger).  It is wired similar to the scoreboard in that 3 switches are wired to GPIO lines and the nRF24L01 radio transceiver (transmitter) is wired to the SPI bus with a chip select CS pin.  A 1200mAh battery is connected to the VBAT+ charging connector on the Feather 32u4.  The battery is recharged when this board is connected to a USB power source. 
 
-## Hardware Bill of Materials (Electronics)
+## Hardware 
+Bill of Materials (Electronics)
+
 ### SCOREBOARD
-Arduino Mega 2560
-Switches, Momentary
-nRF24L01
-Power Supply, 5V 20A
-Wire, 22AWG
-Protoboard
+* Arduino Mega 2560
+* Switches, Momentary
+* nRF24L01
+* Power Supply, 5V 20A
+* Wire, 22AWG
+* Protoboard
 
 ### REMOTE
-Feather 32u4
-Switches, Momentary
-nRF24L01 
-Battery, LiPo 1200mAh
-Protoboard
+* Feather 32u4
+* Switches, Momentary
+* nRF24L01 
+* Battery, LiPo 1200mAh
+* Protoboard
 
-## Software - Scoreboard
-This code is procedural.  It operates using the conventional Arduino setup/loop procedure.
+## Software
+### SCOREBOARD
+This code is procedural and operates using the conventional Arduino setup/loop procedure.
 
 Setup:  The scoreboard's setup() function assigns the hardware pinouts and initializes the nRF24L01 radio as a receiver.
 
 Loop: The scoreboard's loop() function performs these actions:
-Polling switches (debounce, press/release/hold state machine, creates a command based on what button was pressed)
-Polling radio receiver (for messages)
-Message Loop (decode)
-Timebase
-Rendering
-Fonts (5x7)
+* Polling switches (debounce, press/release/hold state machine, creates a command based on what button was pressed)
+* Polling radio receiver (for messages)
+* Message Loop (decode)
+* Timebase
+* Rendering
+* Fonts (5x7)
 
-## Software - Remote
+### REMOTE
 Setup:  The remote's setup() function assigns the hardware pinouts and initializes the nRF24L01 radio as a transmitter.
 
 Loop: The remote's loop() function performs these actions:
@@ -52,7 +55,7 @@ Encodes and sends a message via the radio transmitter based on what button was p
 A minimalist message protocol sends a 1-byte command to indicate what button was pressed.  A message header containing the characters "$SB>" indicates the start, device, and direction of the message.  Optionally, a message length and checksum are added.  The receive buffer on the nRF24L01 is 32-bytes.  
 
 ## Libraries
-The FastLED library is used to drive the LEDs. 
+The [FastLED](https://github.com/FastLED/FastLED "FastLED") library is used to drive the LEDs. 
 
 ## Files
 The main project is in the folder: scoreboard
