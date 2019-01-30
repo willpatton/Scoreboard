@@ -8,6 +8,7 @@ The scoreboard and remote each have 3 switches (duplicative).  You can operate t
 
 ## Circuitry
 Scoreboard: The scoreboard is powered by an Arduino Mega 2560 running at 5VDC (chosen because of its pin count and 5V I/O).  There are 8 GPIO lines used to drive the data line for each string of WS2811 LEDs with 35 LEDs per string.  The 3 momentary switches are wired to GPIO pins.  Each switch is debounced in software using a state machine.   An nRF24L01 2.4GHz radio transceiver (receiver) is wired to the SPI bus along with a GPIO for the radio's chip select CS.
+
 Remote:  The remote is powered by a Feather 32u4 (chosen because of its form factor and onboard battery charger).  It is wired similar to the scoreboard in that 3 switches are wired to GPIO lines and the nRF24L01 radio transceiver (transmitter) is wired to the SPI bus with a chip select CS pin.  A 1200mAh battery is connected to the VBAT+ charging connector on the Feather 32u4.  The battery is recharged when this board is connected to a USB power source. 
 
 ## Hardware Bill of Materials (Electronics)
