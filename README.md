@@ -57,11 +57,11 @@ A minimalist message protocol sends a 1-byte command to indicate what button was
 ## Libraries
 The [FastLED](https://github.com/FastLED/FastLED "FastLED") library is used to drive the LEDs. 
 
-The [nRF](https://github.com/tmrh20/RF24/ "nRF") is used to drive the radio transceivers.
+The [nRF24L01](https://github.com/tmrh20/RF24/ "nRF") library is used to drive the radio transceivers.
 
 ## Files
 The main project is in the folder: scoreboard
 
-The wireless remote is in the folder: scoreboard_controller
+The wireless remote project is in the folder: scoreboard_controller
 
 
