@@ -1,13 +1,13 @@
 Scoreboard
 ============
 ## Project
-This project is an arena-style scoreboard with wireless remote control.  There are 4 digits for the clock (timing) and 2 digits each for the team scores (8-digits total).  Each digit is a 5x7 array/font consisting of 35 WS2811 LEDs (the pixels) arranged as a string.  Each digit is controlled by a GPIO line from an Arduino Mega 2560 (or similar).  A full 5x7 font ASCII character set is included. 
+This project is an arena-style scoreboard with wireless remote control.  There are 4 digits for the clock (timing) and 2 digits each for the team scores (8-digits total).  Each digit is a 5x7 array/font consisting of 35 WS2811 LEDs (the pixels) arranged as a string.  Each digit is controlled by a GPIO line from an Arduino Mega 2650 (or similar).  A full 5x7 font ASCII character set is included. 
 
 ## Operation
 The scoreboard and remote each have 3 switches (duplicative).  You can operate the 3 switches locally on the scoreboard or the 3 switches on the remote.   Two switches control the score(s) and one other controls the clock timer.    Press and hold a switch to clear its function.   Press multiple switches at once to run test patterns (or create new features). 
 
 ## Circuitry
-Scoreboard: The scoreboard is powered by an Arduino Mega 2560 running at 5VDC (chosen because of its pin count and 5V I/O).  There are 8 GPIO lines used to drive the data line for each string of WS2811 LEDs with 35 LEDs per string.  The 3 momentary switches are wired to GPIO pins.  Each switch is debounced in software using a state machine.   An nRF24L01 2.4GHz radio transceiver (receiver) is wired to the SPI bus along with a GPIO for the radio's chip select CS.
+Scoreboard: The scoreboard is powered by an Arduino Mega 2650 running at 5VDC (chosen because of its pin count and 5V I/O).  There are 8 GPIO lines used to drive the data line for each string of WS2811 LEDs with 35 LEDs per string.  The 3 momentary switches are wired to GPIO pins.  Each switch is debounced in software using a state machine.   An nRF24L01 2.4GHz radio transceiver (receiver) is wired to the SPI bus along with a GPIO for the radio's chip select CS.
 
 Remote:  The remote is powered by a Feather 32u4 (chosen because of its form factor and onboard battery charger).  It is wired similar to the scoreboard in that 3 switches are wired to GPIO lines and the nRF24L01 radio transceiver (transmitter) is wired to the SPI bus with a chip select CS pin.  A 1200mAh battery is connected to the VBAT+ charging connector on the Feather 32u4.  The battery is recharged when this board is connected to a USB power source. 
 
@@ -15,7 +15,7 @@ Remote:  The remote is powered by a Feather 32u4 (chosen because of its form fac
 Bill of Materials (Electronics)
 
 ### SCOREBOARD
-* Arduino Mega 2560
+* Arduino Mega 2650
 * Switches, Momentary
 * nRF24L01
 * Power Supply, 5V 20A
