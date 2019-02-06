@@ -3,7 +3,9 @@
  * 
  * AUTHOR: Will Patton. http://willpatton.com
  * 
- * BOARD: ARDUINO MEGA 2560, nRF24L01 radio
+ * BOARD: 
+ *  ARDUINO MEGA 2560
+ *  nRF24L01 2.4GHz Radio
  * 
  */
 
@@ -53,7 +55,8 @@ int32_t buttonV_hold = 0;         //visitor    "     "      "     "
 int32_t buttonC_hold = 0;         //clock      "     "      "     "
 uint8_t buttonC_hold_sec = 0;     //button clock time second counter
 
-//SCORING
+
+//SCORES
 int score_home = 0;               //0 to 99
 int score_visitors = 0;           //"    "
 
@@ -65,10 +68,20 @@ int sec01 = '0';                  //second 1's
 //int tenths = '0';
 //int hundreths = '0';
 
-//TIMERS
+//BUZZER
+#define BUZZER A7                 //MEGA analog pin 7 OUTPUT
+#define BUZZER_SEC 3000           //max number of milliseconds the buzzer is allowed on
+bool buzzerSound = false;         //flag to turn buzzer ON/OFF
+unsigned long timerBuzzer;        //number of milliseconds since the buzzer was turned on
+
+//MILLISECONDS
 #define TIMER_TICK 1000           //The number of milliseconds in a timer tick. Used to establish a time base (refresh rate). 
                                   //(1000 = TIMER_TICK updates  1Hz once per second)
                                   //( 100 = TIMER_TICK updates 10Hz 10 times per second)
+#define CLOCK_MIN_90  5400000;      //5400000 = 90 min * 60 sec * 1000 milliseconds 
+#define CLOCK_MIN_5  300000;        //300000  =  5 min * 60 sec * 1000 milliseconds 
+#define ADD_TIME_TO_CLOCK CLOCK_MIN_5;    
+
 //#define CLOCK_RESET 5400000;      //5400000 = 90 min * 60 sec * 1000 milliseconds 
 //#define CLOCK_RESET 3600000;      //3600000 = 60 min * 60 sec * 1000 milliseconds 
 #define CLOCK_RESET 1200000;      //1200000 = 20 min * 60 sec * 1000 milliseconds 
@@ -76,19 +89,21 @@ int sec01 = '0';                  //second 1's
 //#define CLOCK_RESET 600000;       // 600000 = 10 min * 60 sec * 1000 milliseconds 
 //#define CLOCK_RESET 300000;       // 300000 =  5 min * 60 sec * 1000 milliseconds
 //#define CLOCK_RESET 60000;        //  60000 =  1 min * 60 sec * 1000 milliseconds
-//#define CLOCK_RESET 30000;        //   2000 =  0 min * 20 sec * 1000 milliseconds
-//#define CLOCK_RESET 20000;        //   2000 =  0 min * 20 sec * 1000 milliseconds
-#define ADD_5_MIN 300000;
+//#define CLOCK_RESET 30000;        //  30000 =  0 min * 30 sec * 1000 milliseconds
+//#define CLOCK_RESET 20000;        //  20000 =  0 min * 20 sec * 1000 milliseconds
+
+//TIMERS
 int timerOnOff = 0;               //indicates if clock is ON or OFF. 1 = clock ON (running), 0 = clock OFF (stopped)
 unsigned long timerMillisClock;   //millisecond timer used to keep the clock's time remaining
 unsigned long timerElapsed = 0;   //millisecond timer to keep track of elapsed time (used by clock)
 
 //OTHER
-int range_c = 0;                  //a generic counter used for testing the range
+int range_c = 0;                  //a generic counter used for testing the wireless remote's range
+
 
 /**
-   setup
-*/
+ * setup
+ */
 void setup() {
 
   //SERIAL
@@ -104,6 +119,10 @@ void setup() {
   pinMode (BUTTON_CLOCK, INPUT_PULLUP);     //button - clock
   pinMode (BUTTON_HOME, INPUT_PULLUP);      //button - score home
 
+  //BUZZER 
+  pinMode (BUZZER, OUTPUT);  
+  digitalWrite(BUZZER, LOW);   
+         
   //DIGITS - instantiate digit objects
   digSec01.begin();  //clock seconds 1's
   digSec10.begin();  //clock seconds 10's
@@ -132,15 +151,17 @@ void setup() {
   //TIMERS - timers
   timerMillisClock = CLOCK_RESET; //reset the clocks main timer. Holds the time remaining in milliseconds (e.g. 900000 milliseconds = 15 minutes)
   draw_clock();                   //render clock face to setup() values
-  timerElapsed = millis();        //initialize clock's timer
+  timerElapsed = millis();        //init clock's timer
+  timerBuzzer = millis();         //init clock's buzzer
  
 }//end setup
 
 
-/**
-  loop
-      control -> command -> display -> repeat
-*/
+/** 
+ * loop
+ * 
+ * control -> command -> clock (display/buzzer) -> repeat
+ */
 void loop() {
 
   /**
@@ -245,10 +266,7 @@ if (digitalRead(BUTTON_CLOCK) == LOW && buttonC == LOW) { //detect hold
         //if time remaining, then it's okay to start/stop the clock here
         if (timerMillisClock) {
           timerOnOff = timerOnOff ^ 1;    //bitwise toggle
-        } else {
-          //if there is no time remaining, the clock's timer can only be off/zero/stopped
-          timerOnOff = 0;
-        } 
+        }
         Serial.print("CLOCK: ");
         if (timerOnOff) {
           Serial.println("ON");
@@ -267,20 +285,17 @@ if (digitalRead(BUTTON_CLOCK) == LOW && buttonC == LOW) { //detect hold
           timerMillisClock = 0; //CLOCK_RESET; /*reset clock*/ 
         }
         if ((buttonC_hold_sec > 3 ) /*&& (buttonC_hold_sec & 0x01)*/) {  // more than N sec, then every odd numbered second
-          timerMillisClock += ADD_5_MIN;
+          timerMillisClock += ADD_TIME_TO_CLOCK;
         }
         
         //limit clock to 90 min MAX
         if (timerMillisClock > 5400000 ) {
           timerMillisClock = 5400000 ;
-        }
-        
-        timerOnOff = 0; /*clock to OFF*/ 
+        }   
+        timerOnOff = 0;     //set clock to OFF during reset
         timer2minsec();
-        draw_clock();         //refresh clock display after reset or when timer clock is OFF
-        Serial.print("buttonC_hold_sec: "); Serial.print(buttonC_hold_sec);
-        Serial.print(" ");
-        Serial.println("CLOCK RESET TO: "); Serial.println(timerMillisClock);
+        draw_clock();       //refresh clock display after reset or when timer clock is OFF
+        Serial.print("CLOCK RESET TO: "); Serial.println(timerMillisClock);
         break;
       }
     //test or demo mode
@@ -321,28 +336,40 @@ if (digitalRead(BUTTON_CLOCK) == LOW && buttonC == LOW) { //detect hold
   //TIMER TICK - establishes the number of times the clock will update per second 
   if (timerOnOff && (millis() - timerElapsed) > TIMER_TICK) {
 
-    //if time remaining is zero or less, then do nothing here, return.
-    if (timerMillisClock <= 0 ) {
-      return;
-    }
-
-    //limit clock to 90 min MAX
-   if (timerMillisClock > 5400000 ) {
+    //LIMIT - check for limit beyond MAX
+    if (timerMillisClock > 5400000 ) {
       timerMillisClock = 5400000 ;
     }
 
-    //decrement the clock's time remaining by one timer tick
+    //TICK - decrement the clock's time remaining by one timer tick
     timerMillisClock -= TIMER_TICK;   //subtracts a timer tick (milliseconds) from the time remaining
-    timerElapsed = millis();    //reset elapsed time since for the next timer tick
-
-    //stop clock if time remaining is zero or below
-    if (timerMillisClock <= 0) {
-      timerOnOff = 0;  // STOP clock
-      //timerMillisClock = CLOCK_RESET;
-    }
-
-    //render the clock upon each clock tick
+    timerElapsed = millis();          //reset elapsed time since for the next timer tick
+    
+    //RENDER - draw the clock upon each tick
     draw_clock();
+
+    //EXPIRED - if timer is on and remaining time is zero, then time just expired.
+    if (timerMillisClock <= 0 ) {
+      Serial.println("CLOCK EXPIRED");
+      timerOnOff = 0;  // STOP clock
+      buzzerSound = true; /*buzzer to ON*/
+      timerBuzzer = millis();
+      //return;
+    }
+  }
+
+
+  //BUZZER
+  if(buzzerSound && ((millis() - timerBuzzer) < BUZZER_SEC)){
+    //set to ON
+    //Serial.print("BUZZER ON "); Serial.print(millis() - timerBuzzer); Serial.println(" msec");
+    digitalWrite(BUZZER, HIGH);  
+  } else {
+    //set to OFF
+    digitalWrite(BUZZER, LOW);
+    buzzerSound = false; 
+    timerBuzzer = millis();
+    //Serial.println("BUZZER OFF "); 
   }
 
 
