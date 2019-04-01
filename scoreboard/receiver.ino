@@ -41,13 +41,13 @@ int8_t loop_RF24L01() {
    int8_t cmd = NULL;         //holds a character to indicate a bytes was received
   
   if (radio.available()) {
-    digitalWrite(13, HIGH);   //set on-board LED to ON to visually indicate byte(s) was received
+    digitalWrite(LED_BUILTIN, HIGH);   //set on-board LED to ON to visually indicate byte(s) was received
        
     //READ - from radio into text buffer
     char text[32] = "";       //text buffer
     radio.read(&text, sizeof(text)); 
     if(debug){Serial.print("RADIO: command received: "); Serial.println(text); }  
-    digitalWrite(13, LOW);    //set on-board LED to OFF
+    digitalWrite(LED_BUILTIN, LOW);    //set on-board LED to OFF
 
     //TODO
     //PARSE - received string

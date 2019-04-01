@@ -58,11 +58,25 @@ void draw(char ch, int digit){
 
   //calculate number of pixels for the incoming char
   int numpixels = width * height;
+
   
   //working buffers
   char ar[numpixels];   //local buffer - used as a local copy of the font
   char c[numpixels];    //destination buffer - used to hold a "rendered" font 
                         //after manipulating it's pixels to match the physical layout of the LEDs
+
+  //clear pixels
+  if(digit == 0){digSec01.clear();}
+  if(digit == 1){digSec10.clear();}
+  if(digit == 2){digMin01.clear();}
+  if(digit == 3){digMin10.clear();}
+  if(digit == 4){digColon.clear();}
+  if(digit == 5){digHom01.clear();}
+  if(digit == 6){digHom10.clear();}
+  if(digit == 7){digVis01.clear();}
+  if(digit == 8){digVis10.clear();}
+  
+
 
   //Handle each incoming ASCII char and copy it's font to a local working copy called "ar[]" 
   //This table should be sorted by ASCII
@@ -83,6 +97,8 @@ void draw(char ch, int digit){
     case 'B' : {for(int i = 0; i < numpixels; i++){ar[i] = _B[i];} break;}
     case 'C' : {for(int i = 0; i < numpixels; i++){ar[i] = _C[i];} break;}
     case 'D' : {for(int i = 0; i < numpixels; i++){ar[i] = _D[i];} break;}
+    case 'P' : {for(int i = 0; i < numpixels; i++){ar[i] = _P[i];} break;}
+    case 'M' : {for(int i = 0; i < numpixels; i++){ar[i] = _M[i];} break;}
     //TODO: continue for remaining uppercase letters
     case 'a' : {for(int i = 0; i < numpixels; i++){ar[i] = _a[i];} break;}
     case 'b' : {for(int i = 0; i < numpixels; i++){ar[i] = _b[i];} break;}
