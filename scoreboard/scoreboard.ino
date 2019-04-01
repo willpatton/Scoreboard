@@ -66,11 +66,11 @@ int32_t buttonV_hold = 0;         //visitor    "     "      "     "
 int32_t buttonC_hold = 0;         //clock      "     "      "     "
 uint8_t buttonC_hold_sec = 0;     //button clock time second counter
 
-//SCORES
+//SCORE digits
 int score_home = 0;               //0 to 99
 int score_visitors = 0;           //"    "
 
-//CLOCK & CALENDAR DIGITS
+//CLOCK & CALENDAR digits
 int year_ = 0;                   //year  yyyy
 int month_ = 0;                  //month mm
 int day_ = 0;                    //day   dd
@@ -78,7 +78,7 @@ int hours = 0;                  //time
 int minutes = 0;
 int seconds = 0;
 
-//timer - digits
+//TIMER - digits
 int hour10 = 0;                  //hour 10's
 int hour01 = 0;                  //hour 1's
 int min10  = 0;                  //minute 10's
@@ -88,7 +88,7 @@ int sec01  = 0;                  //second 1's
 //int tenths = '0';
 //int hundreths = '0';
 
-//BUZZER
+//BUZZER relay
 #define BUZZER A7                 //MEGA analog pin 7 OUTPUT
 #define BUZZER_SEC 3000           //max number of milliseconds the buzzer is allowed on
 bool buzzerSound = false;         //flag to turn buzzer ON/OFF
@@ -100,9 +100,9 @@ unsigned long timerBuzzer;        //number of milliseconds since the buzzer was 
                                   //( 100 = TIMER_TICK updates 10Hz 10 times per second)
 #define TIMER_MIN_90  5400000;      //5400000 = 90 min * 60 sec * 1000 milliseconds 
 #define TIMER_MIN_5  300000;        //300000  =  5 min * 60 sec * 1000 milliseconds 
-#define ADD_TIME_TO_TIMER TIMER_MIN_5;    
+#define ADD_TIME_TO_TIMER TIMER_MIN_5;  //set timer value to increments of 5 minutes  
 
-//DEFAULT TIMER VALUES upon RESET (uncomment the value most often used. e.g. 20 min for a hockey period)
+//TIMER values upon RESET (uncomment one --> the value most often used. e.g. 20 min for a hockey period)
 //#define TIMER_RESET 5400000;      //5400000 = 90 min * 60 sec * 1000 milliseconds 
 //#define TIMER_RESET 3600000;      //3600000 = 60 min * 60 sec * 1000 milliseconds 
   #define TIMER_RESET 1200000;      //1200000 = 20 min * 60 sec * 1000 milliseconds 
@@ -113,18 +113,18 @@ unsigned long timerBuzzer;        //number of milliseconds since the buzzer was 
 //#define TIMER_RESET 30000;        //  30000 =  0 min * 30 sec * 1000 milliseconds
 //#define TIMER_RESET 20000;        //  20000 =  0 min * 20 sec * 1000 milliseconds
 
-//TIMERS
+//TIMER control
 int timerOnOff = 0;               //indicates if timer is ON or OFF. 1 = timer ON (running), 0 = timer OFF (stopped)
 unsigned long timerMillisClock;   //millisecond timer used to keep the SB timer's time remaining
 unsigned long timerElapsed = 0;   //millisecond timer to keep track of elapsed time (used by timer)
 
-//ZULU TIME
+//CLOCK - ZULU TIME
 String time_zulu;
 unsigned long timerTimeZulu;
 
 
-//OTHER
-int range_c = 0;                  //a generic counter used for testing the wireless remote's range
+//RANGE
+int range_c = 0;                  //a generic counter used for testing the RF24L01 wireless remote's range
 
 
 /**
@@ -138,7 +138,7 @@ void setup() {
   Serial.println("SCOREBOARD V0.2 - begin setup()");
 
   //LED
-  pinMode (LED_BUILTIN, OUTPUT);           //enable built-in LED
+  pinMode (LED_BUILTIN, OUTPUT);           //enable built-in status LED (typically D13)
 
   //BUTTONS
   pinMode (BUTTON_VISITOR, INPUT_PULLUP);   //button - score visitors
@@ -146,9 +146,12 @@ void setup() {
   pinMode (BUTTON_TIMER, INPUT_PULLUP);     //button - clock
 
   //BUZZER 
-  pinMode (BUZZER, OUTPUT);  
-  digitalWrite(BUZZER, LOW);   
+  pinMode (BUZZER, OUTPUT);                 //this drives a relay circuit
+  digitalWrite(BUZZER, LOW);                //init to off
          
+  //RADIO - RF24L01 - remote control
+  setup_RF24L01();                //set radio to receiver mode
+
   //DIGITS - instantiate digit objects
   digSec01.begin();  //clock seconds 1's
   digSec10.begin();  //clock seconds 10's
@@ -160,9 +163,6 @@ void setup() {
   digVis01.begin();  //score visitors 1's
   digVis10.begin();  //score visitors 10's
 
-  //RADIO - RF24L01 
-  setup_RF24L01();                //set radio to receiver mode
-
   //POWER-ON SELF TEST - run test pattern(s) - also helpful to indicate unexpexted reboots
   if(POST) {
     random_beauty();
@@ -170,13 +170,7 @@ void setup() {
     countdown_digit_test();
   }
 
-  //MODE
-  /*
-  switch(mode){
-    case CLOCK : {Serial.println("MODE: CLOCK");break;}
-    default : {Serial.println("MODE: SCOREBOARD & TIMER");break;}
-  }
-  */
+  //MODE == SCOREBOARD
   if(mode == SCOREBOARD){
     Serial.println("MODE: SCOREBOARD & TIMER");
     //INIT SCORES
@@ -188,16 +182,16 @@ void setup() {
     draw_timer();                 //render timer's digits to setup() values
     timerElapsed = millis();        //init clock's timer
     timerBuzzer = millis();         //init clock's buzzer
-      }
+  }
 
-  //CLOCK - time and date
-  if(mode == CLOCK /*&& mode != CLOCK_SET*/){
+  //MODE == CLOCK
+  if(mode == CLOCK){
     Serial.println("MODE: CLOCK");
-    //Go clock "zulu" time
-    //command = 'z';
+    //init "zulu" time
     timerTimeZulu = millis(); //init clock/cal timebase
     setup_time("00000101T120000Z");      //Jan 1, 0000 12:00.00 pm
     //setup_time("20190309T183500Z");   //Mar 9, 2019  6:35.00 pm  //HARDCODED override for debug
+    //command = 'z';
   }
   
 }//end setup
@@ -206,7 +200,7 @@ void setup() {
 /** 
  * loop
  * 
- * control -> command -> clock (display/buzzer) -> repeat
+ * control -> command -> timer or clock -> display/buzzer -> repeat
  */
 void loop() {
 
@@ -217,12 +211,7 @@ void loop() {
   //HOME - score button, hours button
   if (digitalRead(BUTTON_HOME) == LOW && buttonH == HIGH) { //detect press
     buttonH = LOW;
-    //if(mode == SCOREBOARD){
-      command = 'h';      //home score
-    //}
-    //if(mode == CLOCK){
-    //  command == 'n';   //n for hours
-    //}  
+    command = 'h';      //home score 
     delay(10);          //debounce
   }
   if (digitalRead(BUTTON_HOME) == HIGH && buttonH == LOW) { //detect release
@@ -242,12 +231,7 @@ void loop() {
   //VISITORS - score button
   if (digitalRead(BUTTON_VISITOR) == LOW && buttonV == HIGH) { //detect press
     buttonV = LOW;
-    //if(mode == SCOREBOARD){
-      command = 'v';    //vistor's score
-    //}
-    //if(mode == CLOCK){
-    //  command == 'm';  //n for minutes
-    //} 
+    command = 'v';    //vistor's score 
     delay(10);        //debounce
   }
   if (digitalRead(BUTTON_VISITOR) == HIGH && buttonV == LOW) { //detect release
@@ -446,7 +430,6 @@ if (digitalRead(BUTTON_TIMER) == LOW && buttonC == LOW) { //detect hold
       //return;
     }
   }
-
 
   //BUZZER
   if(buzzerSound && ((millis() - timerBuzzer) < BUZZER_SEC)){
