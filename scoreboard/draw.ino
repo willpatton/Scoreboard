@@ -3,24 +3,30 @@
  * 
  * AUTHOR: Will Patton. http://willpatton.com
  * 
- * draw/render ASCII characters to an array of pixels
+ * Draw/render ASCII characters to an array of pixels
  * Each ASCII character gets it's shape from a 5x7 font (see fonts.h). 
  * 
  * Unkown characters are echoed to the Serial console (s/b no effect on the digits).
  * 
- * A section of this code manipulates the pixels position to match the wiring arrangement.
+ * A portion of this code below manipulates the pixel array to match the wiring arrangement.
  * 
  * Some fonts like the 1x4 colon font may be passed though here (but it's pattern is not reversed).
  * 
  * 
- * DIGITS:
- * 
- * HOME      VISITOR
- * 6 5         8 7    
- *      CLOCK
+ * DIGIT ARRANGEMENT:
+ *      TIMER
  *    3 2 4 1 0         //digit 4 is the colon
  * 
+ *  HOME      VISITOR
+ *  6 5         8 7    
+ *  
+ *  
+ *      CLOCK
+ *   3  2 4  1  0  
+ *   h  h :  m  m         //digit 4 is the colon
  * 
+ *  6 5      8 7
+ *  A M      s s   
  */
 
 

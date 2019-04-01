@@ -11,15 +11,15 @@
 
  //DEBUG
 bool debug = true;
-#define POST false  //Power On Self Test (POST). Run test patterns
+#define POST false  //Power On Self Test (POST). Runs test patterns in setup()
 
 //MODE
 #define SCOREBOARD  1   //SCOREBOARD & TIMER
 #define CLOCK       2   //CLOCK
-#define DATE        3   //CALENDAR
+#define DATE        3   //CALENDAR                (todo)
 #define CLOCK_SET   4   //CLOCK is uninitialized 
-//#define RADIO     5   //RADIO STATION
-//#define TICKER    6   //STOCK TICKER
+//#define RADIO     5   //RADIO STATION           (todo)
+//#define TICKER    6   //STOCK TICKER            (todo)  
 int mode = CLOCK;  //choose one of the above modes
 
 //LEDs
@@ -55,7 +55,7 @@ Adafruit_NeoPixel digVis10 = Adafruit_NeoPixel(NUMPIXELS, VIS10, NEO_RGB + NEO_K
 char command = NULL;              //this holds the active command.  (e.g. 'c' to start/stop timer. 'h' to increment the home team score
 
 //BUTTONS
-#define BUTTON_VISITOR A13        //MEGA pin
+#define BUTTON_VISITOR A13        //MEGA pins
 #define BUTTON_TIMER   A14        // "    "
 #define BUTTON_HOME    A15        // "    "
 int8_t buttonH = HIGH;            //home      The state of each button (released = HIGH, pressed = LOW) 
@@ -89,7 +89,7 @@ int sec01  = 0;                  //second 1's
 //int hundreths = '0';
 
 //BUZZER relay
-#define BUZZER A7                 //MEGA analog pin 7 OUTPUT
+#define BUZZER A7                 //MEGA analog pin A7 OUTPUT
 #define BUZZER_SEC 3000           //max number of milliseconds the buzzer is allowed on
 bool buzzerSound = false;         //flag to turn buzzer ON/OFF
 unsigned long timerBuzzer;        //number of milliseconds since the buzzer was turned on
@@ -98,8 +98,8 @@ unsigned long timerBuzzer;        //number of milliseconds since the buzzer was 
 #define TIMER_TICK 1000           //The number of milliseconds in a timer tick. Used to establish a time base (refresh rate). 
                                   //(1000 = TIMER_TICK updates  1Hz once per second)
                                   //( 100 = TIMER_TICK updates 10Hz 10 times per second)
-#define TIMER_MIN_90  5400000;      //5400000 = 90 min * 60 sec * 1000 milliseconds 
-#define TIMER_MIN_5  300000;        //300000  =  5 min * 60 sec * 1000 milliseconds 
+#define TIMER_MIN_90  5400000;    //5400000 = 90 min * 60 sec * 1000 milliseconds 
+#define TIMER_MIN_5  300000;      //300000  =  5 min * 60 sec * 1000 milliseconds 
 #define ADD_TIME_TO_TIMER TIMER_MIN_5;  //set timer value to increments of 5 minutes  
 
 //TIMER values upon RESET (uncomment one --> the value most often used. e.g. 20 min for a hockey period)

@@ -1,7 +1,9 @@
 /**
  * clock
  * 
- * A device for measuring time.
+ * Displays time in hours:minutes.seconds.  
+ * Uses a millisecond timebase.
+ * Parses ZULU time string.
  * 
  * 12-hour AM/PM
  * 
@@ -14,6 +16,13 @@
  * Preferred time format: Zulu     
  * "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'" 
  * 
+ * 
+ * TODO: Time sources 
+ * Real time clock
+ * GPS clock
+ * Time server
+ * Time zones
+ * Daylight savings time
  */
 
 //MACRO
@@ -133,6 +142,7 @@ void loop_time_date_zulu(){
 
   //TICK TOCK, INCREMENT THE CLOCK
   if(mode == CLOCK){
+    //only increment the clock if in CLOCK mode, skip for clock set mode
     seconds++;
   }
   

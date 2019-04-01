@@ -3,7 +3,7 @@
  * 
  * AUTHOR: Will Patton. http://willpatton.com
  * 
- * Fonts are defined as an array of bytes.  
+ * Fonts are defined as an array of bytes (35 bytes per char).  
  * Each font is a 5x7 array to match the pixels in a digit.
  * 
  * TODO - Fonts could be optimized to be an array of "bits".

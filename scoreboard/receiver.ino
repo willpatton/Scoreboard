@@ -3,12 +3,13 @@
  * 
  * AUTHOR: Will Patton. http://willpatton.com
  * 
+ * Adapted from:
  * Arduino Wireless Communication Tutorial
- *       Example 1 - Receiver Code
- *                
+ *       Example 1 - Receiver Code               
  * by Dejan Nedelkovski, www.HowToMechatronics.com
  * 
- * Library: TMRh20/RF24, https://github.com/tmrh20/RF24/
+ * Library: 
+ * TMRh20/RF24, https://github.com/tmrh20/RF24/
  * 
  * BOARD: ARDUINO MEGA 2560
  * 
