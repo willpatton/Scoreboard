@@ -20,7 +20,6 @@
  *  HOME      VISITOR
  *  6 5         8 7    
  *  
- *  
  *      CLOCK
  *   3  2 4  1  0  
  *   h  h :  m  m         //digit 4 is the colon
@@ -99,12 +98,12 @@ void draw(char ch, int digit){
     case '9' : {for(int i = 0; i < numpixels; i++){ar[i] = nine[i];} break;}
     case ':' : {for(int i = 0; i < numpixels; i++){ar[i] = colon[i];} break;} //4 pixels in the 1x4 colon font
     case ' ' : {for(int i = 0; i < numpixels; i++){ar[i] = space[i];} break;} 
-    case 'A' : {for(int i = 0; i < numpixels; i++){ar[i] = _A[i];} break;}
-    case 'B' : {for(int i = 0; i < numpixels; i++){ar[i] = _B[i];} break;}
-    case 'C' : {for(int i = 0; i < numpixels; i++){ar[i] = _C[i];} break;}
-    case 'D' : {for(int i = 0; i < numpixels; i++){ar[i] = _D[i];} break;}
-    case 'P' : {for(int i = 0; i < numpixels; i++){ar[i] = _P[i];} break;}
-    case 'M' : {for(int i = 0; i < numpixels; i++){ar[i] = _M[i];} break;}
+    case 'A' : {for(int i = 0; i < numpixels; i++){ar[i] = A_A[i];} break;}
+    case 'B' : {for(int i = 0; i < numpixels; i++){ar[i] = B_B[i];} break;}
+    case 'C' : {for(int i = 0; i < numpixels; i++){ar[i] = C_C[i];} break;}
+    case 'D' : {for(int i = 0; i < numpixels; i++){ar[i] = D_D[i];} break;}
+    case 'P' : {for(int i = 0; i < numpixels; i++){ar[i] = P_P[i];} break;}
+    case 'M' : {for(int i = 0; i < numpixels; i++){ar[i] = M_M[i];} break;}
     //TODO: continue for remaining uppercase letters
     case 'a' : {for(int i = 0; i < numpixels; i++){ar[i] = _a[i];} break;}
     case 'b' : {for(int i = 0; i < numpixels; i++){ar[i] = _b[i];} break;}
@@ -113,7 +112,7 @@ void draw(char ch, int digit){
     //TODO: continue for remaining lowercase letters
     //Skip missing char's
     //TODO: continue for all remaining ASCII characters
-    default : {if(debug){Serial.print("Char not found: "); Serial.print(ch);Serial.print(" ");Serial.println(ch, HEX);} return(-1);}
+    default : {if(debug){Serial.print("Char not found: "); Serial.print(ch);Serial.print(" ");Serial.println(ch, HEX);} return; /*return(-1);*/}
  
   }
 
@@ -216,6 +215,9 @@ void random_beauty(){
       digHom10.setPixelColor(i, random(0,brt), random(0,brt), random(0,brt)); 
       digVis01.setPixelColor(i, random(0,brt), random(0,brt), random(0,brt)); 
       digVis10.setPixelColor(i, random(0,brt), random(0,brt), random(0,brt)); 
+      //onboard local
+      neoLocal.setPixelColor(i, random(0,brt), random(0,brt), random(0,brt));
+            
       //render
       digSec01.show(); //clock
       digSec10.show();
@@ -226,6 +228,7 @@ void random_beauty(){
       digHom10.show();
       digVis01.show();
       digVis10.show();
+      neoLocal.show();
     }
     //calculate elapsed time
     val = millis() - timer;
@@ -262,6 +265,7 @@ void primary_colors(){
       digHom10.setPixelColor(i, r, g, b); digHom10.show(); //10's
       digVis01.setPixelColor(i, r, g, b); digVis01.show(); //score visitor 1's
       digVis10.setPixelColor(i, r, g, b); digVis10.show(); //10's
+      neoLocal.setPixelColor(i, r, g, b); neoLocal.show(); //10's
     }
     delay(700);
    }
@@ -328,6 +332,7 @@ void clear_all() {
     digHom10.setPixelColor(i, 0);
     digVis01.setPixelColor(i, 0);
     digVis10.setPixelColor(i, 0);
+    neoLocal.setPixelColor(i, 0);
   }
   //render all pixels
   digSec01.show();
@@ -339,5 +344,6 @@ void clear_all() {
   digHom10.show();
   digVis01.show();
   digVis10.show();
+  neoLocal.show();
 }
 

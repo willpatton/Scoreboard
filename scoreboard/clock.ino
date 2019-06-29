@@ -48,7 +48,7 @@ int sec01_t = -1;
   //"yyyyMMddTHHmmssSSSZ" 
   //String timeString = "20190214T120300000Z";
   if (timeString[8] == 'T' && timeString[15] == 'Z') {
-    Serial.println("TIME INIT:");
+    Serial.print("TIME INIT: "); Serial.println(timeString);
     year_ = (timeString[0] - '0') * 1000 +
     (timeString[1] - '0') * 100 +
     (timeString[2] - '0') * 10 +
@@ -85,7 +85,9 @@ int sec01_t = -1;
   }
 
   //CALC - Update time each second
-  calc_time();
+  //WCP TODO
+  //loop_rtc(); //get time from RTC
+  calc_time(); //render time to digits
 
   //render clock digits in ASCII format (add 0x30 to each numeric value to get ASCII digits) 
   if(hour10_t != hour10){

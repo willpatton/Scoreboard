@@ -13,13 +13,16 @@
 bool debug = true;
 #define POST false  //Power On Self Test (POST). Runs test patterns in setup()
 
-//MODE
+//MODE - determines what the board is doing (e.g. scoreboard, clock...)
+#define MODE_MIN   1
 #define SCOREBOARD  1   //SCOREBOARD & TIMER
 #define CLOCK       2   //CLOCK
 #define DATE        3   //CALENDAR                (todo)
 #define CLOCK_SET   4   //CLOCK is uninitialized 
+#define TEST       5
 //#define RADIO     5   //RADIO STATION           (todo)
 //#define TICKER    6   //STOCK TICKER            (todo)  
+#define MODE_MAX   6
 int mode = CLOCK;  //choose one of the above modes
 
 //LEDs
@@ -40,6 +43,8 @@ int mode = CLOCK;  //choose one of the above modes
 #define NUMPIXELS      35   //max number of pixels in a digit (5 x 7 = 35 pixels per digit)
 #define BRIGHTNESS     192   //a common way to set a max color value from 0 (off) to 255 (full on)
 
+#define NEO_LOCAL      49//on board neopixels
+
 //Instantiate "digit" objects                                                           //DIGIT
 Adafruit_NeoPixel digSec01 = Adafruit_NeoPixel(NUMPIXELS, SEC01, NEO_RGB + NEO_KHZ800); //0
 Adafruit_NeoPixel digSec10 = Adafruit_NeoPixel(NUMPIXELS, SEC10, NEO_RGB + NEO_KHZ800); //1
@@ -51,17 +56,22 @@ Adafruit_NeoPixel digHom10 = Adafruit_NeoPixel(NUMPIXELS, HOM10, NEO_RGB + NEO_K
 Adafruit_NeoPixel digVis01 = Adafruit_NeoPixel(NUMPIXELS, VIS01, NEO_RGB + NEO_KHZ800); //7
 Adafruit_NeoPixel digVis10 = Adafruit_NeoPixel(NUMPIXELS, VIS10, NEO_RGB + NEO_KHZ800); //8
 
+Adafruit_NeoPixel neoLocal = Adafruit_NeoPixel(3, NEO_LOCAL, NEO_RGB + NEO_KHZ800);
+
 //COMMAND and CONTROL
 char command = NULL;              //this holds the active command.  (e.g. 'c' to start/stop timer. 'h' to increment the home team score
 
 //BUTTONS
-#define BUTTON_VISITOR A13        //MEGA pins
-#define BUTTON_TIMER   A14        // "    "
+#define BUTTON_MODE A12           //MEGA pins
+#define BUTTON_TIMER   A13        // "    "
+#define BUTTON_VISITOR A14        //
 #define BUTTON_HOME    A15        // "    "
-int8_t buttonH = HIGH;            //home      The state of each button (released = HIGH, pressed = LOW) 
+int8_t buttonM = HIGH;            //mode      The state of each button (released = HIGH, pressed = LOW) 
+int8_t buttonH = HIGH;            //home       "     "      "     "
 int8_t buttonV = HIGH;            //visitor    "     "      "     "
 int8_t buttonC = HIGH;            //clock      "     "      "     "
-int32_t buttonH_hold = 0;         //home      The number of milliseconds the button is being held "pressed (LOW)"
+int32_t buttonM_hold = 0;         //mode      The number of milliseconds the button is being held "pressed (LOW)"
+int32_t buttonH_hold = 0;         //home       "     "      "     "
 int32_t buttonV_hold = 0;         //visitor    "     "      "     "
 int32_t buttonC_hold = 0;         //clock      "     "      "     "
 uint8_t buttonC_hold_sec = 0;     //button clock time second counter
@@ -135,22 +145,29 @@ void setup() {
   //SERIAL
   Serial.begin(115200);
   delay(1500);
-  Serial.println("SCOREBOARD V0.2 - begin setup()");
+  Serial.println("SCOREBOARD V2.0 with PCB - begin setup()");
 
   //LED
   pinMode (LED_BUILTIN, OUTPUT);           //enable built-in status LED (typically D13)
 
   //BUTTONS
-  pinMode (BUTTON_VISITOR, INPUT_PULLUP);   //button - score visitors
+  pinMode (BUTTON_MODE, INPUT_PULLUP);      //button - score home
   pinMode (BUTTON_HOME, INPUT_PULLUP);      //button - score home
+  pinMode (BUTTON_VISITOR, INPUT_PULLUP);   //button - score visitors
   pinMode (BUTTON_TIMER, INPUT_PULLUP);     //button - clock
 
   //BUZZER 
   pinMode (BUZZER, OUTPUT);                 //this drives a relay circuit
-  digitalWrite(BUZZER, LOW);                //init to off
+  digitalWrite(BUZZER, HIGH);                //init to off
          
   //RADIO - RF24L01 - remote control
   setup_RF24L01();                //set radio to receiver mode
+
+  //RTC
+  //setup_rtc();
+
+  //EEPROM
+  setup_eeprom();
 
   //DIGITS - instantiate digit objects
   digSec01.begin();  //clock seconds 1's
@@ -163,11 +180,13 @@ void setup() {
   digVis01.begin();  //score visitors 1's
   digVis10.begin();  //score visitors 10's
 
+  neoLocal.begin();  //score visitors 10's
+
   //POWER-ON SELF TEST - run test pattern(s) - also helpful to indicate unexpexted reboots
   if(POST) {
     random_beauty();
     primary_colors();
-    countdown_digit_test();
+    //countdown_digit_test();
   }
 
   //MODE == SCOREBOARD
@@ -184,15 +203,19 @@ void setup() {
     timerBuzzer = millis();         //init clock's buzzer
   }
 
-  //MODE == CLOCK
-  if(mode == CLOCK){
+  
+  /// DEPRECATED with RTC
+  //mode = CLOCK;
+  if(1){ //
     Serial.println("MODE: CLOCK");
     //init "zulu" time
     timerTimeZulu = millis(); //init clock/cal timebase
-    setup_time("00000101T120000Z");      //Jan 1, 0000 12:00.00 pm
-    //setup_time("20190309T183500Z");   //Mar 9, 2019  6:35.00 pm  //HARDCODED override for debug
+    //setup_time("00000101T120000Z");      //Jan 1, 0000 12:00.00 pm
+    setup_time("20190622T165930Z");   //Mar 9, 2019  6:35.00 pm  //HARDCODED override for debug
     //command = 'z';
   }
+  timerTimeZulu = millis(); //init clock/cal timebase
+
   
 }//end setup
 
@@ -208,6 +231,25 @@ void loop() {
      BUTTONS - poll buttons on circuit board
      Used for development (or without controller)
   */
+  //MODE - mode
+  if (digitalRead(BUTTON_MODE) == LOW && buttonM == HIGH) { //detect press
+    buttonM = LOW;
+    command = 'm';      //mode 
+    delay(10);          //debounce
+  }
+  if (digitalRead(BUTTON_MODE) == HIGH && buttonM == LOW) { //detect release
+    buttonM = HIGH;
+    buttonM_hold = 0;
+    delay(10);          //debounce
+  }
+  if (digitalRead(BUTTON_MODE) == LOW && buttonM == LOW) { //detect hold
+    buttonM_hold++;
+    delay(5); //slow down hold sampling
+    if (buttonM_hold > 1000) {
+      buttonM_hold = 0;
+      command = 'M';
+    }
+  }
   //HOME - score button, hours button
   if (digitalRead(BUTTON_HOME) == LOW && buttonH == HIGH) { //detect press
     buttonH = LOW;
@@ -267,7 +309,11 @@ if (digitalRead(BUTTON_TIMER) == LOW && buttonC == LOW) { //detect hold
       command = 'C';  // 'C'lear timer
     }
   }
-  //MULTIPLE BUTTONS
+  //MULTIPLE BUTTONS (TOP 2-BUTTONS)
+  if (digitalRead(BUTTON_VISITOR) == LOW && digitalRead(BUTTON_HOME) == LOW) {
+    command = 'm';    // 't' run test pattern
+  }
+  //MULTIPLE BUTTONS (ALL 3-BUTTONS)
   if (digitalRead(BUTTON_VISITOR) == LOW && digitalRead(BUTTON_TIMER) == LOW && digitalRead(BUTTON_HOME) == LOW) {
     command = 't';    // 't' run test pattern
   }
@@ -284,6 +330,25 @@ if (digitalRead(BUTTON_TIMER) == LOW && buttonC == LOW) { //detect hold
      COMMANDS - process any pending commands
   */
   switch (command) {
+    //mode
+    case 'M' : {mode = -1;}     //resets mode to 0 when 'm' command runs. No break here, continue...
+    case 'm' : {
+        mode++;
+        if(mode >= MODE_MAX){
+          mode = MODE_MIN;
+        }
+        //Serial.print("Hello mode: ");Serial.println(mode);
+        Serial.print("mode: ");      
+        switch(mode){
+          case SCOREBOARD : {Serial.println("SCOREBOARD");break;}
+          case CLOCK : {Serial.println("CLOCK");break;}
+          case DATE : {Serial.println("DATE");break;}
+          case CLOCK_SET : {Serial.println("CLOCK_SET");break;}
+          case TEST : {Serial.println("TEST");break;}
+          default : {Serial.println("Invalid mode");}
+        }
+        break;
+      }
     //score home
     case 'H' : {score_home = -1;}     //resets score to 0 when 'h' command runs. No break here, continue...
     case 'h' : {
@@ -446,4 +511,3 @@ if (digitalRead(BUTTON_TIMER) == LOW && buttonC == LOW) { //detect hold
 
 
 }//end main loop
-

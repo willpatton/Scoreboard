@@ -1,4 +1,13 @@
 /**
+ * score
+ * 
+ * Renders the score
+ * 
+ * AUTHOR: Will Patton. http://willpatton.com
+ *  
+ */
+
+/**
  * draw score home
  */
 void draw_score_home(){
