@@ -28,7 +28,7 @@
 //MACRO
 #define NUM(off, mult) ((timeString[(off)] - '0') * (mult))
 
-
+/*
 //LAST VALUES - last digit values
 int hour10_t = -1;
 int hour01_t = -1;
@@ -36,7 +36,7 @@ int min10_t = -1;
 int min01_t = -1;
 int sec10_t = -1;
 int sec01_t = -1;
-
+*/
   
 
 /**
@@ -114,7 +114,7 @@ int sec01_t = -1;
   /*Serial.print("DATE:");*/Serial.print(year_);Serial.print("-");Serial.print(month_);Serial.print("-");Serial.print(day_);Serial.print(" ");
   /*Serial.print("TIME: ");*/Serial.print(hour10);Serial.print(hour01);Serial.print(":");Serial.print(min10);Serial.print(min01);Serial.print(".");Serial.print(sec10);Serial.print(sec01);
   Serial.print(" ");
-  Serial.print(vis10);Serial.print(vis01);
+  Serial.print(vis10);Serial.print(vis01); //AM or PM
   Serial.println();
 
   //SAVE - existing digit values for next loop

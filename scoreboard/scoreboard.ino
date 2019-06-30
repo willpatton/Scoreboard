@@ -13,21 +13,29 @@
 bool debug = true;
 #define POST false  //Power On Self Test (POST). Runs test patterns in setup()
 
+//BOARD
+//MEGA2560 5V
+//SAMD51   3.3V
+
+//SHIELD
+#define SCOREBOARD_PROTOYPE true  //prototype 5V.  (No RTC, EEPROM. No mode switch)
+#define PIXELDRIVER false         //PCB: 9-CH, RTC, EEPROM, Mode switch.  5V or 3.3V
+
 //MODE - determines what the board is doing (e.g. scoreboard, clock...)
-#define MODE_MIN   1
 #define SCOREBOARD  1   //SCOREBOARD & TIMER
 #define CLOCK       2   //CLOCK
-#define DATE        3   //CALENDAR                (todo)
-#define CLOCK_SET   4   //CLOCK is uninitialized 
-#define TEST       5
+#define CLOCK_SET   3   //CLOCK is uninitialized 
+//#define DATE        4   //CALENDAR                (todo)
+//#define TEST       5
 //#define RADIO     5   //RADIO STATION           (todo)
 //#define TICKER    6   //STOCK TICKER            (todo)  
-#define MODE_MAX   6
-int mode = CLOCK;  //choose one of the above modes
+#define MODE_MIN   1
+#define MODE_MAX   3
+int mode = SCOREBOARD;  //choose one of the above modes
 
 //LEDs
 #include <Adafruit_NeoPixel.h>
-#include "fonts.h"
+#include "fonts.h"      //custom fonts
 
 //TIMER DIGITS                    //MEGA pinout assignments
 #define SEC01          31   //timer digit 0 seconds 1's right most
@@ -88,6 +96,15 @@ int hours = 0;                  //time
 int minutes = 0;
 int seconds = 0;
 
+//CLOCK - LAST VALUES - last digit values
+int hour10_t = -1;
+int hour01_t = -1;
+int min10_t = -1;
+int min01_t = -1;
+int sec10_t = -1;
+int sec01_t = -1;
+
+  
 //TIMER - digits
 int hour10 = 0;                  //hour 10's
 int hour01 = 0;                  //hour 1's
@@ -164,10 +181,14 @@ void setup() {
   setup_RF24L01();                //set radio to receiver mode
 
   //RTC
-  //setup_rtc();
+  if(PIXELDRIVER){
+    setup_rtc();
+  }
 
   //EEPROM
-  setup_eeprom();
+  if(PIXELDRIVER){
+   setup_eeprom();
+  }
 
   //DIGITS - instantiate digit objects
   digSec01.begin();  //clock seconds 1's
@@ -204,14 +225,13 @@ void setup() {
   }
 
   
-  /// DEPRECATED with RTC
-  //mode = CLOCK;
-  if(1){ //
-    Serial.println("MODE: CLOCK");
+  //CLOCK - MANUAL SETUP OVERRIDE
+  if(1){ 
+    Serial.println("SETUP DATE AND TIME");
     //init "zulu" time
     timerTimeZulu = millis(); //init clock/cal timebase
     //setup_time("00000101T120000Z");      //Jan 1, 0000 12:00.00 pm
-    setup_time("20190622T165930Z");   //Mar 9, 2019  6:35.00 pm  //HARDCODED override for debug
+    setup_time("20190629T171300Z");   //HARDCODED override for debug
     //command = 'z';
   }
   timerTimeZulu = millis(); //init clock/cal timebase
@@ -309,9 +329,16 @@ if (digitalRead(BUTTON_TIMER) == LOW && buttonC == LOW) { //detect hold
       command = 'C';  // 'C'lear timer
     }
   }
-  //MULTIPLE BUTTONS (TOP 2-BUTTONS)
-  if (digitalRead(BUTTON_VISITOR) == LOW && digitalRead(BUTTON_HOME) == LOW) {
-    command = 'm';    // 't' run test pattern
+  //MULTIPLE BUTTONS (TOP 2-BUTTONS plus HOLD)
+  if (digitalRead(BUTTON_HOME) == LOW && digitalRead(BUTTON_VISITOR) == LOW) {
+    buttonH_hold++;
+    buttonV_hold++;
+    if(buttonH_hold >300 && buttonV_hold > 300){
+      //Serial.println("MODE change");
+      command = 'm';    // change mode
+      buttonH_hold = 0; //clear hold counter
+      buttonV_hold = 0;
+    }   
   }
   //MULTIPLE BUTTONS (ALL 3-BUTTONS)
   if (digitalRead(BUTTON_VISITOR) == LOW && digitalRead(BUTTON_TIMER) == LOW && digitalRead(BUTTON_HOME) == LOW) {
@@ -334,17 +361,16 @@ if (digitalRead(BUTTON_TIMER) == LOW && buttonC == LOW) { //detect hold
     case 'M' : {mode = -1;}     //resets mode to 0 when 'm' command runs. No break here, continue...
     case 'm' : {
         mode++;
-        if(mode >= MODE_MAX){
+        if(mode > MODE_MAX){
           mode = MODE_MIN;
         }
-        //Serial.print("Hello mode: ");Serial.println(mode);
-        Serial.print("mode: ");      
+        Serial.print("MODE: ");      
         switch(mode){
           case SCOREBOARD : {Serial.println("SCOREBOARD");break;}
           case CLOCK : {Serial.println("CLOCK");break;}
-          case DATE : {Serial.println("DATE");break;}
+          //case DATE : {Serial.println("DATE");break;}
           case CLOCK_SET : {Serial.println("CLOCK_SET");break;}
-          case TEST : {Serial.println("TEST");break;}
+          //case TEST : {Serial.println("TEST");break;}
           default : {Serial.println("Invalid mode");}
         }
         break;
@@ -399,6 +425,7 @@ if (digitalRead(BUTTON_TIMER) == LOW && buttonC == LOW) { //detect hold
         if(mode == CLOCK || mode == CLOCK_SET){
           Serial.println("RESETTING CLOCK: ");
           //mode = CLOCK;
+          timerOnOff = 0; //set to off
           timerTimeZulu = millis(); //init clock/cal timebase
           setup_time("00000101T120000Z");      //Jan 1, 0000 12:00.00 pm
           break;
@@ -450,15 +477,35 @@ if (digitalRead(BUTTON_TIMER) == LOW && buttonC == LOW) { //detect hold
         range_c--;
         break;
       }
-      case 'z' : {
-        //CLOCK ZULU time 
-        loop_time_zulu();
-      }
-      case 'Z' : {
-        //CLOCK ZULU time and date 
-        //loop_time_date_zulu();
-      }
+    case 'z' : {
+      //CLOCK ZULU time 
+      loop_time_zulu();
+    }
+    case 'Z' : {
+      //CLOCK ZULU time and date 
+      //loop_time_date_zulu();
+    }
   }
+
+  //PATCH CLOCK
+  if((mode == CLOCK) && (command == 'm')){
+    hour10_t = -1;
+    hour01_t = -1;
+    min10_t = -1;
+    min01_t = -1;
+    sec10_t = -1;
+    sec01_t = -1;
+  }
+
+  //PATCH - refresh Scoreboard upon mode change
+  if((mode == SCOREBOARD) && (command == 'm')){
+    //RENDER - refresh
+    draw_timer();
+    draw_score_home();
+    draw_score_visitors();
+  }
+
+  
   //CLEAR - clear the active command each time through the main loop (so commands only run once)
   command = NULL;
 
@@ -479,7 +526,7 @@ if (digitalRead(BUTTON_TIMER) == LOW && buttonC == LOW) { //detect hold
       timerMillisClock = 5400000 ;
     }
 
-    //TICK - decrement the timers's time remaining by one timer tick
+    //TICK - decrement the timer's time remaining by one timer tick
     timerMillisClock -= TIMER_TICK;   //subtracts a timer tick (milliseconds) from the time remaining
     timerElapsed = millis();          //reset elapsed time since for the next timer tick
     
@@ -495,6 +542,7 @@ if (digitalRead(BUTTON_TIMER) == LOW && buttonC == LOW) { //detect hold
       //return;
     }
   }
+
 
   //BUZZER
   if(buzzerSound && ((millis() - timerBuzzer) < BUZZER_SEC)){

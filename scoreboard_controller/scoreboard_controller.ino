@@ -1,5 +1,5 @@
 /**
- * SCOREBOARD CONTROLLER
+ * SCOREBOARD CONTROLLER - HANDHELD REMOTE
  * 
  * BOARD: ADAFRUIT FEATHER 32u4 
  * RADIO: nRF24L01
@@ -131,6 +131,17 @@ void loop() {
       command = 'C';  // 'C'lear clock
     }
   }
+  //MULTIPLE BUTTONS (TOP 2-BUTTONS plus HOLD)
+  if (digitalRead(BUTTON_HOME) == LOW && digitalRead(BUTTON_VISITOR) == LOW) {
+    buttonH_hold++;
+    buttonV_hold++;
+    if(buttonH_hold >300 && buttonV_hold > 300){
+      //Serial.println("MODE change");
+      command = 'm';    // change mode
+      buttonH_hold = 0; //clear hold counter
+      buttonV_hold = 0;
+    }   
+  }
   //MULTIPLE BUTTONS
   if (digitalRead(BUTTON_VISITOR) == LOW && digitalRead(BUTTON_CLOCK) == LOW && digitalRead(BUTTON_HOME) == LOW) {
     command = 't';    // 't' run test pattern
@@ -200,11 +211,21 @@ void loop() {
         delay(500);
         break;
       }
-    //test or demo mode
+    //test or demo
     case 't' : {
         Serial.println("TEST/DEMO: ");
         digitalWrite(13, HIGH);
         const char text[] = "$SB<t";  //send "t" command toward the SB $SB<
+        radio.write(&text, sizeof(text));
+        digitalWrite(13, LOW);
+        delay(500);
+        break;
+      }
+    //mode
+    case 'm' : {
+        Serial.println("MODE CHANGE");
+        digitalWrite(13, HIGH);
+        const char text[] = "$SB<m";  //send "m" command toward the SB $SB<
         radio.write(&text, sizeof(text));
         digitalWrite(13, LOW);
         delay(500);
