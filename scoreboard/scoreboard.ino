@@ -88,23 +88,10 @@ uint8_t buttonC_hold_sec = 0;     //button clock time second counter
 int score_home = 0;               //0 to 99
 int score_visitors = 0;           //"    "
 
-//CLOCK & CALENDAR digits
-int year_ = 0;                   //year  yyyy
-int month_ = 0;                  //month mm
-int day_ = 0;                    //day   dd
-int hours = 0;                  //time
-int minutes = 0;
-int seconds = 0;
+//DATE & TIME - a new class
+#include "clock.h"
+MyDateTime dt;     //create instance
 
-//CLOCK - LAST VALUES - last digit values
-int hour10_t = -1;
-int hour01_t = -1;
-int min10_t = -1;
-int min01_t = -1;
-int sec10_t = -1;
-int sec01_t = -1;
-
-  
 //TIMER - digits
 int hour10 = 0;                  //hour 10's
 int hour01 = 0;                  //hour 1's
@@ -112,8 +99,6 @@ int min10  = 0;                  //minute 10's
 int min01  = 0;                  //minute 1's
 int sec10  = 0;                  //second 10's
 int sec01  = 0;                  //second 1's
-//int tenths = '0';
-//int hundreths = '0';
 
 //BUZZER relay
 #define BUZZER A7                 //MEGA analog pin A7 OUTPUT
@@ -144,10 +129,6 @@ unsigned long timerBuzzer;        //number of milliseconds since the buzzer was 
 int timerOnOff = 0;               //indicates if timer is ON or OFF. 1 = timer ON (running), 0 = timer OFF (stopped)
 unsigned long timerMillisClock;   //millisecond timer used to keep the SB timer's time remaining
 unsigned long timerElapsed = 0;   //millisecond timer to keep track of elapsed time (used by timer)
-
-//CLOCK - ZULU TIME
-String time_zulu;
-unsigned long timerTimeZulu;
 
 
 //RANGE
@@ -225,16 +206,16 @@ void setup() {
   }
 
   
-  //CLOCK - MANUAL SETUP OVERRIDE
-  if(1){ 
+  //TIME - MANUAL SETUP OVERRIDE
+  if(0){ 
     Serial.println("SETUP DATE AND TIME");
     //init "zulu" time
-    timerTimeZulu = millis(); //init clock/cal timebase
-    //setup_time("00000101T120000Z");      //Jan 1, 0000 12:00.00 pm
-    setup_time("20190629T171300Z");   //HARDCODED override for debug
+    dt.TimeZulu = millis(); //init clock/cal timebase
+    //dt.setup_time("00000101T120000Z");    //Jan 1, 0000 12:00.00 pm
+    dt.setup_time("20190629T171300Z");   
     //command = 'z';
   }
-  timerTimeZulu = millis(); //init clock/cal timebase
+  dt.TimeZulu = millis(); //init clock/cal timebase
 
   
 }//end setup
@@ -353,6 +334,7 @@ if (digitalRead(BUTTON_TIMER) == LOW && buttonC == LOW) { //detect hold
     command = cmd;
   }
 
+
   /**
      COMMANDS - process any pending commands
   */
@@ -379,7 +361,7 @@ if (digitalRead(BUTTON_TIMER) == LOW && buttonC == LOW) { //detect hold
     case 'H' : {score_home = -1;}     //resets score to 0 when 'h' command runs. No break here, continue...
     case 'h' : {
         if(mode == CLOCK || mode == CLOCK_SET){
-          hours++;
+          dt.set_hours();
           break;
         }
         score_home++;
@@ -391,7 +373,7 @@ if (digitalRead(BUTTON_TIMER) == LOW && buttonC == LOW) { //detect hold
     case 'V' : {score_visitors = -1;}  //resets score to 0 when 'v' command runs. No break here, continue...
     case 'v' : {
         if(mode == CLOCK || mode == CLOCK_SET){
-          minutes++;
+          dt.set_minutes();
           break;
         }
         score_visitors++;
@@ -406,6 +388,7 @@ if (digitalRead(BUTTON_TIMER) == LOW && buttonC == LOW) { //detect hold
           mode = CLOCK;
           break;
         }    
+        
         //if time remaining, then it's okay to start/stop the timer here
         if (timerMillisClock) {
           timerOnOff = timerOnOff ^ 1;    //bitwise toggle
@@ -426,8 +409,9 @@ if (digitalRead(BUTTON_TIMER) == LOW && buttonC == LOW) { //detect hold
           Serial.println("RESETTING CLOCK: ");
           //mode = CLOCK;
           timerOnOff = 0; //set to off
-          timerTimeZulu = millis(); //init clock/cal timebase
-          setup_time("00000101T120000Z");      //Jan 1, 0000 12:00.00 pm
+          dt.TimeZulu = millis(); //init clock/cal timebase
+          //TODO - preserve date
+          dt.setup_time("00000101T120000Z");      //Jan 1, 0000 12:00.00 pm
           break;
         }
         
@@ -479,7 +463,7 @@ if (digitalRead(BUTTON_TIMER) == LOW && buttonC == LOW) { //detect hold
       }
     case 'z' : {
       //CLOCK ZULU time 
-      loop_time_zulu();
+      dt.loop_time_zulu();
     }
     case 'Z' : {
       //CLOCK ZULU time and date 
@@ -487,14 +471,9 @@ if (digitalRead(BUTTON_TIMER) == LOW && buttonC == LOW) { //detect hold
     }
   }
 
-  //PATCH CLOCK
+  //PATCH CLOCK - refresh clock's digits upon mode change
   if((mode == CLOCK) && (command == 'm')){
-    hour10_t = -1;
-    hour01_t = -1;
-    min10_t = -1;
-    min01_t = -1;
-    sec10_t = -1;
-    sec01_t = -1;
+    dt.clock_init();
   }
 
   //PATCH - refresh Scoreboard upon mode change

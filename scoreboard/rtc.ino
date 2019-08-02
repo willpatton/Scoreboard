@@ -41,13 +41,16 @@ void setup_rtc () {
   //}
   
   DateTime now = rtc.now();
-  
+
+  //TODO - wcp moved to class
+  /*
   year_ = now.year();
   month_ = now.month();
   day_ = now.day();
   hours = now.hour();
   minutes = now.minute();
   seconds = now.second();
+  */
   
  }
 

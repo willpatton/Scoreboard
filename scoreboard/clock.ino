@@ -1,5 +1,6 @@
 /**
- * clock
+ * date and time
+ * clock and calendar
  * 
  * Displays time in hours:minutes.seconds.  
  * Uses a millisecond timebase.
@@ -23,26 +24,27 @@
  * Time server
  * Time zones
  * Daylight savings time
+ * 
  */
 
 //MACRO
 #define NUM(off, mult) ((timeString[(off)] - '0') * (mult))
 
-/*
-//LAST VALUES - last digit values
-int hour10_t = -1;
-int hour01_t = -1;
-int min10_t = -1;
-int min01_t = -1;
-int sec10_t = -1;
-int sec01_t = -1;
-*/
-  
+#include "clock.h"
+
+
+/**
+ * constructor
+ */
+MyDateTime::MyDateTime(){
+  //nothing yet
+}
+
 
 /**
  * setup  
  */
- void setup_time(String timeString){
+ void MyDateTime::setup_time(String timeString){
 
   //INIT - set values gotten from time server, GPS, or remote link 
   //"yyyyMMddTHHmmssSSSZ" 
@@ -65,15 +67,36 @@ int sec01_t = -1;
 
 
 /**
+ * init clock values
+ * used to refresh clock digits upon mode change
+ */
+ void MyDateTime::clock_init(){
+    hour10_t = -1;
+    hour01_t = -1;
+    min10_t = -1;
+    min01_t = -1;
+    sec10_t = -1;
+    sec01_t = -1;
+ }
+
+
+void MyDateTime::set_hours(){
+  hours++;
+}
+void MyDateTime::set_minutes(){
+  minutes++;
+}
+
+/**
  * loop
  */
- void loop_time_zulu(){
+ void MyDateTime::loop_time_zulu(){
 
   //only run this function every 1 second
-  if(millis() - timerTimeZulu < 1000){
+  if(millis() - TimeZulu < 1000){
     return;
   }
-  timerTimeZulu = millis(); //reset second timer
+  TimeZulu = millis(); //reset second timer
 
   //Uninitialized clock
   //detect 1st time through, clear display
@@ -110,9 +133,9 @@ int sec01_t = -1;
   draw(vis10, 6);
   draw(vis01, 5);
   
-  //display too!
-  /*Serial.print("DATE:");*/Serial.print(year_);Serial.print("-");Serial.print(month_);Serial.print("-");Serial.print(day_);Serial.print(" ");
-  /*Serial.print("TIME: ");*/Serial.print(hour10);Serial.print(hour01);Serial.print(":");Serial.print(min10);Serial.print(min01);Serial.print(".");Serial.print(sec10);Serial.print(sec01);
+  //DATE & TIME - echo to console
+  Serial.print(year_);Serial.print("-");Serial.print(month_);Serial.print("-");Serial.print(day_);Serial.print(" ");
+  Serial.print(hour10);Serial.print(hour01);Serial.print(":");Serial.print(min10);Serial.print(min01);Serial.print(".");Serial.print(sec10);Serial.print(sec01);
   Serial.print(" ");
   Serial.print(vis10);Serial.print(vis01); //AM or PM
   Serial.println();
@@ -128,23 +151,14 @@ int sec01_t = -1;
 
 
 /**
- * 
- */
- /*
-void loop_time_date_zulu(){
-  
-}
-*/
-
-/**
  * calc time every timer tick (1-second)
+ * convert time to clock digits
  */
- void calc_time(){
+ void MyDateTime::calc_time(){
   
-
   //TICK TOCK, INCREMENT THE CLOCK
   if(mode == CLOCK){
-    //only increment the clock if in CLOCK mode, skip for clock set mode
+    //only increment the clock if in CLOCK mode, skip for CLOCK_SET mode
     seconds++;
   }
   
@@ -163,10 +177,10 @@ void loop_time_date_zulu(){
     seconds = 0;
     
     //TODO - MIDNIGHT - re-sync time at midnight-
-    //setup_time(); 
+    //time_sync(); 
   }
 
-  //CLOCK TO DIGITS
+  //CONVERT TIME TO CLOCK DIGITS
   int hour_t = hours; //temp
   if(hours > 12){
     hour_t -= 12;
