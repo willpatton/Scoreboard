@@ -1,10 +1,20 @@
 /**
  * SCOREBOARD
  * 
- * AUTHOR: Will Patton. http://willpatton.com
+ * @author:   Will Patton 
+ * @url:      http://github.com/willpatton
+ * @license:  MIT License
  * 
- * BOARD: 
- * ARDUINO MEGA 2560
+ * Compatible with MCU:
+ *  ARDUINO MEGA AVR 2560
+ *  ADAFRUIT M0 SAMD21
+ *  ADAFRUIT Grand Central SAMD51
+ *  
+ * Pixel Driver Shield V1.0
+ *  switches
+ * 
+ * W2812B LEDs
+ * 
  * nRF24L01 2.4GHz Radio
  * 
  */
@@ -15,59 +25,51 @@ bool debug = true;
 
 //BOARD
 //MEGA2560 5V
+
+//PROCESSOR
 //SAMD51   3.3V
 
 //SHIELD
 #define SCOREBOARD_PROTOYPE true  //prototype 5V.  (No RTC, EEPROM. No mode switch)
 #define PIXELDRIVER false         //PCB: 9-CH, RTC, EEPROM, Mode switch.  5V or 3.3V
 
-//MODE - determines what the board is doing (e.g. scoreboard, clock...)
-#define SCOREBOARD  1   //SCOREBOARD & TIMER
-#define CLOCK       2   //CLOCK
-#define CLOCK_SET   3   //CLOCK is uninitialized 
-//#define DATE        4   //CALENDAR                (todo)
-//#define TEST       5
-//#define RADIO     5   //RADIO STATION           (todo)
-//#define TICKER    6   //STOCK TICKER            (todo)  
-#define MODE_MIN   1
-#define MODE_MAX   3
-int mode = SCOREBOARD;  //choose one of the above modes
+//FONTS
+#include "fonts.h"      //custom fonts for 5x7 pixels arrays
 
 //LEDs
 #include <Adafruit_NeoPixel.h>
-#include "fonts.h"      //custom fonts
 
-//TIMER DIGITS                    //MEGA pinout assignments
-#define SEC01          31   //timer digit 0 seconds 1's right most
-#define SEC10          33   //timer digit 1 seconds 10's
-#define MIN01          35   //timer digit 2 minutes 1's
-#define MIN10          37   //timer digit 3 minutes 10's left most
-#define COLON          39   //timer colon
+//PINOUTS 
+//each one of these is a string of 35 LEDs (except colon 2 pixels)
+                       //PIN  //function
+#define SEC01          31     //timer digit 0 seconds 1's right most
+#define SEC10          33     //timer digit 1 seconds 10's
+#define MIN01          35     //timer digit 2 minutes 1's
+#define MIN10          37     //timer digit 3 minutes 10's left most
+#define COLON          39     //timer colon  //2 pixels only
 #define HOM01          45//41   //score home 1's 
 #define HOM10          47//43   //score home 10's
 #define VIS01          41//45   //score visitors 1's  
 #define VIS10          43//47   //score visitors 10's 
-                            //
-#define NUMPIXELS      35   //max number of pixels in a digit (5 x 7 = 35 pixels per digit)
-#define BRIGHTNESS     192   //a common way to set a max color value from 0 (off) to 255 (full on)
+//                            //
+#define NUMPIXELS      35     //max number of pixels in a digit (5 x 7 = 35 pixels per digit)
+#define BRIGHTNESS     192    //a common way to set a max color value from 0 (off) to 255 (full on)
 
-#define NEO_LOCAL      49//on board neopixels
-
-//Instantiate "digit" objects                                                           //DIGIT
+//Array of pixels - the "digit" objects                                                 //DIGIT
 Adafruit_NeoPixel digSec01 = Adafruit_NeoPixel(NUMPIXELS, SEC01, NEO_RGB + NEO_KHZ800); //0
 Adafruit_NeoPixel digSec10 = Adafruit_NeoPixel(NUMPIXELS, SEC10, NEO_RGB + NEO_KHZ800); //1
 Adafruit_NeoPixel digMin01 = Adafruit_NeoPixel(NUMPIXELS, MIN01, NEO_RGB + NEO_KHZ800); //2
 Adafruit_NeoPixel digMin10 = Adafruit_NeoPixel(NUMPIXELS, MIN10, NEO_RGB + NEO_KHZ800); //3
-Adafruit_NeoPixel digColon = Adafruit_NeoPixel(NUMPIXELS, COLON, NEO_RGB + NEO_KHZ800); //4
+Adafruit_NeoPixel digColon = Adafruit_NeoPixel(2        , COLON, NEO_RGB + NEO_KHZ800); //4   //2 pixels only
 Adafruit_NeoPixel digHom01 = Adafruit_NeoPixel(NUMPIXELS, HOM01, NEO_RGB + NEO_KHZ800); //5
 Adafruit_NeoPixel digHom10 = Adafruit_NeoPixel(NUMPIXELS, HOM10, NEO_RGB + NEO_KHZ800); //6
 Adafruit_NeoPixel digVis01 = Adafruit_NeoPixel(NUMPIXELS, VIS01, NEO_RGB + NEO_KHZ800); //7
 Adafruit_NeoPixel digVis10 = Adafruit_NeoPixel(NUMPIXELS, VIS10, NEO_RGB + NEO_KHZ800); //8
 
-Adafruit_NeoPixel neoLocal = Adafruit_NeoPixel(3, NEO_LOCAL, NEO_RGB + NEO_KHZ800);
+//PIXEL DRIVER 
+#define NEO_LOCAL      49  
+Adafruit_NeoPixel neoLocal = Adafruit_NeoPixel(3, NEO_LOCAL, NEO_RGB + NEO_KHZ800);     //3 pixels on-board
 
-//COMMAND and CONTROL
-char command = NULL;              //this holds the active command.  (e.g. 'c' to start/stop timer. 'h' to increment the home team score
 
 //BUTTONS
 #define BUTTON_MODE A12           //MEGA pins
@@ -84,55 +86,70 @@ int32_t buttonV_hold = 0;         //visitor    "     "      "     "
 int32_t buttonC_hold = 0;         //clock      "     "      "     "
 uint8_t buttonC_hold_sec = 0;     //button clock time second counter
 
-//SCORE digits
+
+//MODE
+//determines what the board should do (e.g. scoreboard, clock...)
+//mode is persistant until changed (run many)
+#define NOTHING     0   //do nothing. all off, quiet mode, power savings
+#define STANDBY     1   //mostly off (except for colon)
+#define TEST        2
+#define TIMER       3   //timer only  
+#define SCOREBOARD  4   //scores and timer
+#define CLOCK       5   //time only
+#define DATE        6   //date only
+#define CLOCK_SET   7   //clock is uninitialized 
+#define DATE_SET    8   //time and date
+#define RTC         9   //show RTC 
+#define RTC_SET     10  //RTC is uninitialized, show interface to set RTC
+#define BUZZER      11  //activates buzzer
+#define TEMP        12  //temperature
+#define TUNER       13  //radio tuner AM/FM
+#define TICKER      14  //stock ticker    
+#define RANGE       15  //wireless range testing     
+#define MODE_MIN   SCOREBOARD
+#define MODE_MAX   DATE
+int mode = CLOCK;       //select one of the above modes
+int mode_last = -1;     //remembers the last mode. Used to detect changes or first time through. Default - unitialized 
+int flag_test = 0;      //flag for test mode
+
+//COMMAND
+//commands are cleared at the end of each loop (run once)
+char cmdByte = NULL;              //this holds the active command byte.  
+char cmdStr[32] = "";             //        "         "           str
+
+
+
+//SCORE
 int score_home = 0;               //0 to 99
 int score_visitors = 0;           //"    "
+//int flag_home = 0;              //1=refresh
+//int flag_visitors = 0;          //1=refresh
+int flag_scoreboard = 0;          //1=refresh
 
-//DATE & TIME - a new class
+
+//CLOCK - TIMER, DATE, TIME
 #include "clock.h"
-MyDateTime dt;     //create instance
+MyDateTime dt;                    
+int flag_clock = 0;                //1=refresh
+int flag_timer = 0;                //1=refresh
 
-//TIMER - digits
-int hour10 = 0;                  //hour 10's
-int hour01 = 0;                  //hour 1's
-int min10  = 0;                  //minute 10's
-int min01  = 0;                  //minute 1's
-int sec10  = 0;                  //second 10's
-int sec01  = 0;                  //second 1's
+//RTC
+int flag_rtc = 0;                 //1=detected, 0=not found
+
 
 //BUZZER relay
 #define BUZZER A7                 //MEGA analog pin A7 OUTPUT
-#define BUZZER_SEC 3000           //max number of milliseconds the buzzer is allowed on
-bool buzzerSound = false;         //flag to turn buzzer ON/OFF
+#define BUZZER_SEC 3000           //on time. The max number of milliseconds the buzzer is allowed on
+bool flag_buzzer = false;         //flag to turn buzzer ON/OFF
 unsigned long timerBuzzer;        //number of milliseconds since the buzzer was turned on
-
-//MILLISECONDS
-#define TIMER_TICK 1000           //The number of milliseconds in a timer tick. Used to establish a time base (refresh rate). 
-                                  //(1000 = TIMER_TICK updates  1Hz once per second)
-                                  //( 100 = TIMER_TICK updates 10Hz 10 times per second)
-#define TIMER_MIN_90  5400000;    //5400000 = 90 min * 60 sec * 1000 milliseconds 
-#define TIMER_MIN_5  300000;      //300000  =  5 min * 60 sec * 1000 milliseconds 
-#define ADD_TIME_TO_TIMER TIMER_MIN_5;  //set timer value to increments of 5 minutes  
-
-//TIMER values upon RESET (uncomment one --> the value most often used. e.g. 20 min for a hockey period)
-//#define TIMER_RESET 5400000;      //5400000 = 90 min * 60 sec * 1000 milliseconds 
-//#define TIMER_RESET 3600000;      //3600000 = 60 min * 60 sec * 1000 milliseconds 
-  #define TIMER_RESET 1200000;      //1200000 = 20 min * 60 sec * 1000 milliseconds 
-//#define TIMER_RESET 900000;       // 900000 = 15 min * 60 sec * 1000 milliseconds 
-//#define TIMER_RESET 600000;       // 600000 = 10 min * 60 sec * 1000 milliseconds 
-//#define TIMER_RESET 300000;       // 300000 =  5 min * 60 sec * 1000 milliseconds
-//#define TIMER_RESET 60000;        //  60000 =  1 min * 60 sec * 1000 milliseconds
-//#define TIMER_RESET 30000;        //  30000 =  0 min * 30 sec * 1000 milliseconds
-//#define TIMER_RESET 20000;        //  20000 =  0 min * 20 sec * 1000 milliseconds
-
-//TIMER control
-int timerOnOff = 0;               //indicates if timer is ON or OFF. 1 = timer ON (running), 0 = timer OFF (stopped)
-unsigned long timerMillisClock;   //millisecond timer used to keep the SB timer's time remaining
-unsigned long timerElapsed = 0;   //millisecond timer to keep track of elapsed time (used by timer)
 
 
 //RANGE
 int range_c = 0;                  //a generic counter used for testing the RF24L01 wireless remote's range
+
+
+//PERFORMANCE MONITORS
+unsigned long loop_timer = millis();
 
 
 /**
@@ -143,10 +160,10 @@ void setup() {
   //SERIAL
   Serial.begin(115200);
   delay(1500);
-  Serial.println("SCOREBOARD V2.0 with PCB - begin setup()");
+  Serial.println("\nSCOREBOARD with PIXEL DRIVER board V2.0 \nsetup()...");
 
   //LED
-  pinMode (LED_BUILTIN, OUTPUT);           //enable built-in status LED (typically D13)
+  pinMode (LED_BUILTIN, OUTPUT);            //enable built-in LED (typically D13)
 
   //BUTTONS
   pinMode (BUTTON_MODE, INPUT_PULLUP);      //button - score home
@@ -155,233 +172,178 @@ void setup() {
   pinMode (BUTTON_TIMER, INPUT_PULLUP);     //button - clock
 
   //BUZZER 
-  pinMode (BUZZER, OUTPUT);                 //this drives a relay circuit
-  digitalWrite(BUZZER, HIGH);                //init to off
+  pinMode (BUZZER, OUTPUT);                 //this drives a SPDT relay circuit
+  digitalWrite(BUZZER, HIGH);               //init to off.  Active low. 0=ON, 1=OFF
          
-  //RADIO - RF24L01 - remote control
-  setup_RF24L01();                //set radio to receiver mode
+  //nRF24L01
+  setup_RF24L01();                          //setup nRF24
 
   //RTC
   if(PIXELDRIVER){
-    setup_rtc();
+    flag_rtc = setup_rtc();                 //detect and setup, I2C device
   }
 
   //EEPROM
   if(PIXELDRIVER){
-   setup_eeprom();
+   setup_eeprom();                          //detect and setup, I2C device
   }
 
-  //DIGITS - instantiate digit objects
-  digSec01.begin();  //clock seconds 1's
-  digSec10.begin();  //clock seconds 10's
-  digMin01.begin();  //clock minutes 1's
-  digMin10.begin();  //clock minutes 10's
-  digColon.begin();  //clock colon
+  //DIGITS
+  digSec01.begin();  //seconds 1's
+  digSec10.begin();  //seconds 10's
+  digMin01.begin();  //minutes 1's
+  digMin10.begin();  //minutes 10's
+  digColon.begin();  //colon (2 pixels)
   digHom01.begin();  //score home 1's
   digHom10.begin();  //score home 10's
   digVis01.begin();  //score visitors 1's
   digVis10.begin();  //score visitors 10's
 
-  neoLocal.begin();  //score visitors 10's
+  neoLocal.begin();  //PIXEL DRIVER 3-pixels on-board
 
-  //POWER-ON SELF TEST - run test pattern(s) - also helpful to indicate unexpexted reboots
+
+  //POWER-ON SELF TEST - run test pattern(s) - also helpful to indicate unexpected reboots
   if(POST) {
     random_beauty();
-    primary_colors();
+    //primary_colors();
     //countdown_digit_test();
   }
 
-  //MODE == SCOREBOARD
+
+  //SCOREBOARD
   if(mode == SCOREBOARD){
-    Serial.println("MODE: SCOREBOARD & TIMER");
-    //INIT SCORES
-    draw_score_home();
-    draw_score_visitors();
-  
-    //INIT TIMER
-    timerMillisClock = TIMER_RESET; //reset the clocks main timer. Holds the time remaining in milliseconds (e.g. 900000 milliseconds = 15 minutes)
-    draw_timer();                 //render timer's digits to setup() values
-    timerElapsed = millis();        //init clock's timer
-    timerBuzzer = millis();         //init clock's buzzer
+    scoreboard_init();        //scoring
+    dt.timer_init();             //timing
   }
 
-  
-  //TIME - MANUAL SETUP OVERRIDE
-  if(0){ 
-    Serial.println("SETUP DATE AND TIME");
-    //init "zulu" time
-    dt.TimeZulu = millis(); //init clock/cal timebase
-    //dt.setup_time("00000101T120000Z");    //Jan 1, 0000 12:00.00 pm
-    dt.setup_time("20190629T171300Z");   
-    //command = 'z';
+  //DATE TIME 
+  if(1){ 
+    dt.dtInit();             //override - set date and time
   }
-  dt.TimeZulu = millis(); //init clock/cal timebase
+  dt.timer_sec = millis();     //begin clock/cal timebase
 
-  
+
+  //TIMER
+  if(0){
+    dt.timer_init();             //this feature is part of the scoreboard
+  }
+
 }//end setup
 
 
 /** 
  * loop
- * 
- * control -> command -> timer or clock -> display/buzzer -> repeat
+ * controls -> command -> mode -> timer or clock -> display/buzzer -> repeat
  */
 void loop() {
+  
+  //loop monitor
+  loop_timer = millis();
 
-  /**
-     BUTTONS - poll buttons on circuit board
-     Used for development (or without controller)
-  */
-  //MODE - mode
-  if (digitalRead(BUTTON_MODE) == LOW && buttonM == HIGH) { //detect press
-    buttonM = LOW;
-    command = 'm';      //mode 
-    delay(10);          //debounce
-  }
-  if (digitalRead(BUTTON_MODE) == HIGH && buttonM == LOW) { //detect release
-    buttonM = HIGH;
-    buttonM_hold = 0;
-    delay(10);          //debounce
-  }
-  if (digitalRead(BUTTON_MODE) == LOW && buttonM == LOW) { //detect hold
-    buttonM_hold++;
-    delay(5); //slow down hold sampling
-    if (buttonM_hold > 1000) {
-      buttonM_hold = 0;
-      command = 'M';
-    }
-  }
-  //HOME - score button, hours button
-  if (digitalRead(BUTTON_HOME) == LOW && buttonH == HIGH) { //detect press
-    buttonH = LOW;
-    command = 'h';      //home score 
-    delay(10);          //debounce
-  }
-  if (digitalRead(BUTTON_HOME) == HIGH && buttonH == LOW) { //detect release
-    buttonH = HIGH;
-    buttonH_hold = 0;
-    delay(10);          //debounce
-  }
-  if (digitalRead(BUTTON_HOME) == LOW && buttonH == LOW) { //detect hold
-    buttonH_hold++;
-    delay(5); //slow down hold sampling
-    if (buttonH_hold > 1000) {
-      buttonH_hold = 0;
- //     score_home = -1; //this will reset the score to zero when the command runs below
-      command = 'H';
-    }
-  }
-  //VISITORS - score button
-  if (digitalRead(BUTTON_VISITOR) == LOW && buttonV == HIGH) { //detect press
-    buttonV = LOW;
-    command = 'v';    //vistor's score 
-    delay(10);        //debounce
-  }
-  if (digitalRead(BUTTON_VISITOR) == HIGH && buttonV == LOW) { //detect release
-    buttonV = HIGH;
-    buttonV_hold = 0;
-    delay(10);        //debounce
-  }
-  if (digitalRead(BUTTON_VISITOR) == LOW && buttonV == LOW) { //detect hold
-    buttonV_hold++;
-    delay(5); //slow down hold sampling
-    if (buttonV_hold > 1000) {
-      buttonV_hold = 0;
-//      score_visitors = -1; //this will reset the score to zero when the command runs below
-      command = 'V';
-    }
-  }
-  //TIMER - button
-  if (digitalRead(BUTTON_TIMER) == LOW && buttonC == HIGH) { //detect press
-    buttonC = LOW;
-    command = 'c';    //toggle timer on/off
-    delay(10);        //debounce
-  }
-  if (digitalRead(BUTTON_TIMER) == HIGH && buttonC == LOW) { //detect release
-    buttonC = HIGH;
-    buttonC_hold = 0;
-    delay(10);        //debounce
-  }
-if (digitalRead(BUTTON_TIMER) == LOW && buttonC == LOW) { //detect hold
-    buttonC_hold++;
-    delay(2);         //slow down hold sampling
-    if (buttonC_hold > 1000) {
-      buttonC_hold = 0;
-      command = 'C';  // 'C'lear timer
-    }
-  }
-  //MULTIPLE BUTTONS (TOP 2-BUTTONS plus HOLD)
-  if (digitalRead(BUTTON_HOME) == LOW && digitalRead(BUTTON_VISITOR) == LOW) {
-    buttonH_hold++;
-    buttonV_hold++;
-    if(buttonH_hold >300 && buttonV_hold > 300){
-      //Serial.println("MODE change");
-      command = 'm';    // change mode
-      buttonH_hold = 0; //clear hold counter
-      buttonV_hold = 0;
-    }   
-  }
-  //MULTIPLE BUTTONS (ALL 3-BUTTONS)
-  if (digitalRead(BUTTON_VISITOR) == LOW && digitalRead(BUTTON_TIMER) == LOW && digitalRead(BUTTON_HOME) == LOW) {
-    command = 't';    // 't' run test pattern
+
+  //CONTROLS
+  if(1){   
+    loop_controls();            //always read pending commands from the buttons, switches each time through loop
   }
 
 
-  /**
-     RADIO - read radio receiver for pending commands
-  */
-  if (int cmd = loop_RF24L01()) {
-    command = cmd;
+  //nRF24
+  if(1) {
+    cmdByte = loop_RF24L01();   //always read pending commands from the nRF24L01
   }
 
 
-  /**
-     COMMANDS - process any pending commands
-  */
-  switch (command) {
-    //mode
+  //COMMANDS - byte
+  switch (cmdByte) {            //process any pending commands
+
+    //mode - increment
     case 'M' : {mode = -1;}     //resets mode to 0 when 'm' command runs. No break here, continue...
     case 'm' : {
         mode++;
         if(mode > MODE_MAX){
           mode = MODE_MIN;
         }
-        Serial.print("MODE: ");      
-        switch(mode){
-          case SCOREBOARD : {Serial.println("SCOREBOARD");break;}
-          case CLOCK : {Serial.println("CLOCK");break;}
-          //case DATE : {Serial.println("DATE");break;}
-          case CLOCK_SET : {Serial.println("CLOCK_SET");break;}
-          //case TEST : {Serial.println("TEST");break;}
-          default : {Serial.println("Invalid mode");}
-        }
         break;
       }
-    //score home
+
+    //mode - set to scoreboard or clock
+    case 'S' : {mode = SCOREBOARD;/*scoreboard_init();*/ break;}   //set mode to SB and init
+    case 's' : {mode = CLOCK;     /*dt.clock_init();*/ break;}          //force mode to clock (not SB)
+    case 'D' : {mode = DATE_SET; break;}
+    case 'd' : {mode = DATE; break;}
+
+    //home
     case 'H' : {score_home = -1;}     //resets score to 0 when 'h' command runs. No break here, continue...
     case 'h' : {
-        if(mode == CLOCK || mode == CLOCK_SET){
-          dt.set_hours();
+      if(mode == SCOREBOARD){
+          score_home++;
+          if(score_home > 99){score_home = 0;}
+          draw_score_home();
           break;
         }
-        score_home++;
-        if(score_home > 99){score_home = 0;}
-        draw_score_home();
-        break;
+        if(mode == DATE || DATE_SET){
+          dt.set_month();       //increment 
+          break;
+        }
+        if(mode == CLOCK || mode == CLOCK_SET){
+          dt.set_hours();       //increment 
+          break;
+        }     
       }
-    //score visitors
+      
+    //visitor 
     case 'V' : {score_visitors = -1;}  //resets score to 0 when 'v' command runs. No break here, continue...
     case 'v' : {
-        if(mode == CLOCK || mode == CLOCK_SET){
-          dt.set_minutes();
+        if(mode == SCOREBOARD){
+          score_visitors++;
+          if(score_visitors > 99){score_visitors = 0;}
+          draw_score_visitors();
           break;
         }
-        score_visitors++;
-        if(score_visitors > 99){score_visitors = 0;}
-        draw_score_visitors();
+        if(mode == DATE || DATE_SET){
+          dt.set_day();       //increment 
+          break;
+        }
+        if(mode == CLOCK || mode == CLOCK_SET){
+          dt.set_minutes();     //increment
+          break;
+        }
+      }
+
+    //time set to known state  
+    case 'O' :{ timerOnOff = 1; break;}  //timer on
+    case 'o' :{ timerOnOff = 0; break;}  //timer off
+    
+    //timer and clock reset
+    case 'C' : {
+        if(mode == DATE || mode == DATE_SET || mode == CLOCK || mode == CLOCK_SET){
+          Serial.println("RESETTING DATE/CLOCK: ");
+          //timerOnOff = 0;                     //set to off    
+          dt.initZulu("20190701T120304Z");      //YYYYMMddThhmmss, July 1, 2019 12:03.04 PM
+          break;
+        }
+        
+        buttonC_hold_sec++;  //inc this counter each time the 'C' command is detected (about once per second)
+
+        if (buttonC_hold_sec > 1 && buttonC_hold_sec < 3) {
+          timerMillisClock = 0; //TIMER_RESET; /*reset timer*/ 
+        }
+        if ((buttonC_hold_sec > 3 ) /*&& (buttonC_hold_sec & 0x01)*/) {  // more than N sec, then every odd numbered second
+          timerMillisClock += ADD_TIME_TO_TIMER;
+        }
+        
+        //limit timer to 90 min MAX
+        if (timerMillisClock > 5400000 ) {
+          timerMillisClock = 5400000 ;
+        }   
+        timerOnOff = 0;     //set timer to OFF during reset
+        dt.calc_timer2minsec();
+        dt.draw_timer();       //refresh timer display after reset or when timer timer is OFF
+        Serial.print("TIMER RESET TO: "); Serial.println(timerMillisClock);
         break;
       }
-     //timer start/stop
+      
+     //timer and clock toggle start/stop
     case 'c' : {
         if(mode == CLOCK || mode == CLOCK_SET){
           Serial.println("CLOCK: ");
@@ -403,50 +365,21 @@ if (digitalRead(BUTTON_TIMER) == LOW && buttonC == LOW) { //detect hold
         buttonC_hold_sec = 0; 
         break;
       }
-    //timer reset
-    case 'C' : {
-        if(mode == CLOCK || mode == CLOCK_SET){
-          Serial.println("RESETTING CLOCK: ");
-          //mode = CLOCK;
-          timerOnOff = 0; //set to off
-          dt.TimeZulu = millis(); //init clock/cal timebase
-          //TODO - preserve date
-          dt.setup_time("00000101T120000Z");      //Jan 1, 0000 12:00.00 pm
-          break;
-        }
-        
-        buttonC_hold_sec++;  //inc this counter each time the 'C' command is detected (about once per second)
-
-        if (buttonC_hold_sec > 1 && buttonC_hold_sec < 3) {
-          timerMillisClock = 0; //TIMER_RESET; /*reset timer*/ 
-        }
-        if ((buttonC_hold_sec > 3 ) /*&& (buttonC_hold_sec & 0x01)*/) {  // more than N sec, then every odd numbered second
-          timerMillisClock += ADD_TIME_TO_TIMER;
-        }
-        
-        //limit timer to 90 min MAX
-        if (timerMillisClock > 5400000 ) {
-          timerMillisClock = 5400000 ;
-        }   
-        timerOnOff = 0;     //set timer to OFF during reset
-        timer2minsec();
-        draw_timer();       //refresh timer display after reset or when timer timer is OFF
-        Serial.print("TIMER RESET TO: "); Serial.println(timerMillisClock);
-        break;
-      }
+           
     //test or demo mode
     case 't' : {
         Serial.print("TEST: ");
-        int timerOnOffTemp = timerOnOff; timerOnOff = 0; //save timer setting, the disable timer
+        //int timerOnOffTemp = timerOnOff; timerOnOff = 0; //save timer setting, the disable timer
         random_beauty();
         //primary_colors();
         //countdown_digit_test();
-        clear_all();
-        draw_timer();
-        timerOnOff = timerOnOffTemp; //restore timer setting
+        //clear_all();
+        //dt.draw_timer();
+        //timerOnOff = timerOnOffTemp; //restore timer setting
         break;
       }
-    //range test mode (for development only)
+      
+    //RANGE range test mode (for development only)
     case 'r' : {
         //RANGE - continuously increments a digit if the transmitter is within range
         if (range_c > 9) {
@@ -461,44 +394,136 @@ if (digitalRead(BUTTON_TIMER) == LOW && buttonC == LOW) { //detect hold
         range_c--;
         break;
       }
-    case 'z' : {
-      //CLOCK ZULU time 
-      dt.loop_time_zulu();
-    }
+
+    //CLOCK AND CALENDAR
     case 'Z' : {
-      //CLOCK ZULU time and date 
-      //loop_time_date_zulu();
-    }
-  }
+        //dt.loop_date();      //date
+        break;
+      }
+    case 'z' : {
+        dt.loop_time();      //time
+        break;
+      }
 
-  //PATCH CLOCK - refresh clock's digits upon mode change
-  if((mode == CLOCK) && (command == 'm')){
-    dt.clock_init();
-  }
 
-  //PATCH - refresh Scoreboard upon mode change
-  if((mode == SCOREBOARD) && (command == 'm')){
-    //RENDER - refresh
-    draw_timer();
-    draw_score_home();
-    draw_score_visitors();
-  }
+    //X CURSOR
+    case 'X' : {
+        score_home++;
+        draw_score_home();
+        break;
+      }
+    case 'x' : {
+        score_home--;
+        draw_score_home();
+        break;
+      }
 
+    //Y CURSOR
+    case 'Y' : {
+        score_visitors++;
+        draw_score_visitors();
+        break;
+      }
+    case 'y' : {
+        score_visitors--;
+        draw_score_visitors();
+        break;
+      }
+    
+  }//end switch
+
+
+  //COMMANDS - string
   
-  //CLEAR - clear the active command each time through the main loop (so commands only run once)
-  command = NULL;
 
-  //PATCH - always force command to 'z' in clock mode
-  if(mode == CLOCK || mode == CLOCK_SET){
-    command = 'z';
+  //MODE 
+  if(mode != mode_last){        //detect mode changes, set flags to force refresh
+    Serial.print("MODE: ");      
+    switch(mode){
+      case NOTHING    : {Serial.println("NOTHING");break;}
+      case STANDBY    : {Serial.println("STANDBY");break;}
+      case SCOREBOARD : {Serial.println("SCOREBOARD");flag_scoreboard = 1;break;}
+      case CLOCK      : {Serial.println("CLOCK");     flag_clock = 1;break;}
+      case CLOCK_SET  : {Serial.println("CLOCK_SET"); flag_clock = 1;break;}
+      case DATE       : {Serial.println("DATE");      flag_clock = 1;break;}
+      case DATE_SET   : {Serial.println("DATE_SET");  flag_clock = 1;break;}
+      case TIMER      : {Serial.println("TIMER");break;}
+      //case CALENDAR   : {Serial.println("CALENDAR");break;}
+      //case RTC        : {Serial.println("RTC_SET");break;}   
+      case TEST       : {Serial.println("TEST");flag_test = 1;break;}
+      default         : {Serial.println("INVALID");}
+    }
   }
 
 
   /**
-   *  TIMER
+   * RENDERING
    */
+
+  //STANDBY
+  if(mode == STANDBY){
+    clear_all();
+    mode = NOTHING;
+  }
+
+  //SCOREBOARD
+  if(mode == SCOREBOARD){
+    /*
+    if(flag_timer){dt.draw_timer();}              
+    if(flag_home){draw_score_home();}
+    if(flag_visitors){draw_score_visitors();}
+    */
+    //draw only when flagged
+    if(flag_scoreboard){
+      dt.draw_timer();
+      draw_score_home();
+      draw_score_visitors();
+      flag_scoreboard = 0;
+    }
+  }
+
+   //RTC SET
+  if(mode == RTC_SET){
+    //TODO - user interace to set RTC
+  }
+
+  //RTC
+  if(mode == RTC){
+
+    loop_rtc();              //display RTC values
+    
+    if(flag_rtc){
+       //TODO use RTC valuse for clock, date and time
+    }
+
+    flag_rtc = 0;               //clear
+  }
+
+  //CLOCK SET
+  if(mode == CLOCK_SET){
+    dt.dtInit();                //a user interface for setting the clock
+    //dt.loop_time();             //refresh clock
+  }
+
+  //CLOCK 
+  if(mode == CLOCK){
+    dt.loop_time();             //refresh clock
+  }
+
+  //DATE SET
+  if(mode == DATE_SET){
+    dt.dtInit();               //a user interface for setting the date
+    //dt.loop_date();            //refresh date
+  }
+
+  //DATE 
+  if(mode == DATE){
+    dt.loop_date();             //refresh date
+  }
+
+  //TIMER
   //TIMER TICK - establishes the number of times the timer will update per second 
-  if (timerOnOff && (millis() - timerElapsed) > TIMER_TICK) {
+  if ((mode == SCOREBOARD || mode == TIMER) && timerOnOff && (millis() - timerElapsed) > TIMER_TICK) {
 
     //LIMIT - check for limit beyond MAX
     if (timerMillisClock > 5400000 ) {
@@ -510,31 +535,44 @@ if (digitalRead(BUTTON_TIMER) == LOW && buttonC == LOW) { //detect hold
     timerElapsed = millis();          //reset elapsed time since for the next timer tick
     
     //RENDER - draw the timer upon each tick
-    draw_timer();
-
-    //EXPIRED - if timer is on and remaining time is zero, then time just expired.
+    //flag_timer = 1;
+    //or
+    dt.draw_timer();
+    
+    //EXPIRED - if timer is on and remaining time is zero, then time just expired. Trigger buzzer
     if (timerMillisClock <= 0 ) {
       Serial.println("TIMER EXPIRED");
-      timerOnOff = 0;  // STOP timer
-      buzzerSound = true; /*buzzer to ON*/
+      timerOnOff = 0;                 //STOP timer
+      flag_buzzer = true;             //buzzer to ON
       timerBuzzer = millis();
-      //return;
     }
   }
 
 
   //BUZZER
-  if(buzzerSound && ((millis() - timerBuzzer) < BUZZER_SEC)){
-    //set to ON
-    //Serial.print("BUZZER ON "); Serial.print(millis() - timerBuzzer); Serial.println(" msec");
+  if(flag_buzzer && ((millis() - timerBuzzer) < BUZZER_SEC)){
+    //ON
+    Serial.print("BUZZER ON "); Serial.print(millis() - timerBuzzer); Serial.println(" msec");
     digitalWrite(BUZZER, HIGH);  
   } else {
-    //set to OFF
+    //OFF
     digitalWrite(BUZZER, LOW);
-    buzzerSound = false; 
+    flag_buzzer = false; 
     timerBuzzer = millis();
     //Serial.println("BUZZER OFF "); 
   }
 
+
+  //CLEAR
+  cmdByte = NULL;             //clear the active command each time through the main loop (so commands only run once)
+  strcpy(cmdStr,NULL);
+  mode_last = mode;           //detect mode changes
+
+
+  //LOOP
+  if(0){
+    //loop performance monitor
+    Serial.print("loop_timer: ");Serial.print(millis() - loop_timer);  Serial.print(" msec"); 
+  }
 
 }//end main loop

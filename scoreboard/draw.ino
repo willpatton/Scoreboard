@@ -1,53 +1,85 @@
 /**
  * draw
  * 
- * AUTHOR: Will Patton. http://willpatton.com
+ * @author:   Will Patton 
+ * @url:      http://github.com/willpatton
+ * @license:  MIT License
  * 
- * Draw/render ASCII characters to an array of pixels
- * Each ASCII character gets it's shape from a 5x7 font (see fonts.h). 
+ * Draw/render ASCII characters to a wiring harness of 35 indexable RGB LEDs that form a 
+ * pattern of pixels as "digit" or font.
  * 
- * Unkown characters are echoed to the Serial console (s/b no effect on the digits).
+ * The harness of LEDS is arranged into a 5x7 grid that corresponds to a 5x7 font (see fonts.h). 
+ * There is helper routine that transposes the layout position of the LEDs to match the grid font. 
+ *
+ * ASCII characters are sent to the draw() function that illuminate the LEDs in a pattern as a font.
  * 
- * A portion of this code below manipulates the pixel array to match the wiring arrangement.
+ * Unkown ASCII characters are echoed to the serial console.
  * 
  * Some fonts like the 1x4 colon font may be passed though here (but it's pattern is not reversed).
  * 
  * 
  * DIGIT ARRANGEMENT:
+ * Each digit consists of 35 indexable RGB LEDs.
+ * 
+ * The digit within the clock's face. 0 is the top-right most digit (e.g. The seconds 1's column)
+ *   0 = clock digit sec01 right most 5x7 = 35 pixels
+ *   1 = clock digit sec10 
+ *   2 = clock digit min01 
+ *   3 = clock digit min10 left most
+ *   4 = clock colon 1x4 = 4 pixels.  Pixel 0 is top pixel 
+ *   5 = score home 1's right most
+ *   6 = score home 10's 
+ *   7 = score visitors 1's right most
+ *   8 = score visitors 10's 
+ * 
+ * +---------------+
+ * |  3  2 4 1  0  |        //digit 4 is the colon (2 pixels)
+ * |               |        
+ * |               |
+ * |  6 5     8 7  |
+ * +---------------+
+ *      
  *      TIMER
- *    3 2 4 1 0         //digit 4 is the colon
- * 
- *  HOME      VISITOR
- *  6 5         8 7    
+ * +---------------+
+ * |   3 2 4 1 0   |        //digit 4 is the colon
+ * |   m m : s s   | 
+ * +---------------+ 
  *  
- *      CLOCK
- *   3  2 4  1  0  
- *   h  h :  m  m         //digit 4 is the colon
+ *      SCORE
+ * +---------------+
+ * |  HOME   VIS   |
+ * |  h h    v v   |  
+ * +---------------+
  * 
- *  6 5      8 7
- *  A M      s s   
+ *      CLOCK
+ * +---------------+
+ * |  3  2 4 1  0  |        //digit 4 is the colon (2 pixels)
+ * |  h  h : m  m  |        
+ * |               |
+ * |  6 5     8 7  |
+ * |  A M     s s  |  
+ * +---------------+
+ * 
+ *       DATE
+ * +---------------+
+ * |  3  2 4 1  0  |        //digit 4 is the colon (2 pixels) - shown off
+ * |  Y  Y   Y  Y  |        
+ * |               |
+ * |  6 5     8 7  |
+ * |  M M     D D  |  
+ * +---------------+ 
+ * 
  */
 
 
 /** 
  *  draw ASCII characters to a digit (an array of pixels)
  *  
- *  ch:
- *    An ASCII character. The ASCII 'ch'aracter to render
+ *  ch: An ASCII character. The ASCII 'ch'aracter to render
  *  
- *  digit:
- *    The digit within the clock's face. 0 is the right most digit (e.g. The seconds 1's column)
- *    0 = clock digit sec01 right most 5x7 = 35 pixels
- *    1 = clock digit sec10 
- *    2 = clock digit min01 
- *    3 = clock digit min10 left most
- *    4 = clock colon 1x4 = 4 pixels.  Pixel 0 is top pixel 
- *    5 = score home 1's right most
- *    6 = score home 10's 
- *    7 = score visitors 1's right most
- *    8 = score visitors 10's 
- *    
- *    returns -1 if character not found
+ *  digits: what digit to draw 0 to 8
+ *   
+ *  return:  -1 if character not found
  */
 void draw(char ch, int digit){
 
@@ -64,7 +96,7 @@ void draw(char ch, int digit){
   //calculate number of pixels for the incoming char
   int numpixels = width * height;
 
-  
+
   //working buffers
   char ar[numpixels];   //local buffer - used as a local copy of the font
   char c[numpixels];    //destination buffer - used to hold a "rendered" font 
@@ -81,7 +113,6 @@ void draw(char ch, int digit){
   if(digit == 7){digVis01.clear();}
   if(digit == 8){digVis10.clear();}
   
-
 
   //Handle each incoming ASCII char and copy it's font to a local working copy called "ar[]" 
   //This table should be sorted by ASCII
@@ -346,4 +377,3 @@ void clear_all() {
   digVis10.show();
   neoLocal.show();
 }
-

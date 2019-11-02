@@ -1,7 +1,9 @@
 /**
  * fonts.h
  * 
- * AUTHOR: Will Patton. http://willpatton.com
+ * @author:   Will Patton 
+ * @url:      http://github.com/willpatton
+ * @license:  MIT License
  * 
  * Fonts are defined as an array of bytes (35 bytes per char).  
  * Each font is a 5x7 array to match the pixels in a digit.

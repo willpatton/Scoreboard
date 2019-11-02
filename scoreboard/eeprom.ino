@@ -1,9 +1,9 @@
 /**
- * 
  * EEPROM
- * CAT24C64WI-GT3
  * 
- * I2C address 0x50
+ * @author:   Will Patton 
+ * @url:      http://github.com/willpatton
+ * @license:  MIT License
  * 
  * ADAFRUIT
  * Hacked code from Adafruit's FRAM example. Need to fix-up!
@@ -12,6 +12,9 @@
  * SPARKFUN
  * https://learn.sparkfun.com/tutorials/reading-and-writing-serial-eeproms?_ga=2.121879051.1833927645.1558581452-558505842.1518806316
  * 
+ * 
+ * CHIP: CAT24C64WI-GT3
+ * I2C address: 0x50
  */
 
 #include <Wire.h>

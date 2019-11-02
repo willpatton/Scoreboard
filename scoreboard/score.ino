@@ -1,18 +1,41 @@
 /**
  * score
  * 
- * Renders the score
  * 
- * AUTHOR: Will Patton. http://willpatton.com
+ * @author:   Will Patton 
+ * @url:      http://github.com/willpatton
+ * @license:  MIT License
+ * 
+ * Scoreboard
+ * Renders the score
  *  
  */
+
+/*
+ * SCOREBOARD INIT - puts scoreboard in to a known state 
+ */
+void scoreboard_init(){
+
+    Serial.println("SCOREBOARD init: ");
+    
+    //rendor scores
+    draw_score_home();      
+    draw_score_visitors();  
+
+    //clear flags
+    //flag_home = 0;
+    //flag_visitors = 0;
+    flag_scoreboard = 0;
+    
+}
+
 
 /**
  * draw score home
  */
 void draw_score_home(){
 
-   //clear score home clock pixels
+   //clear pixels
    for (int i = 0 ; i < NUMPIXELS; i++) {
     digHom10.setPixelColor(i, 0);
     digHom01.setPixelColor(i, 0);
@@ -25,14 +48,17 @@ void draw_score_home(){
    //render score digits in ASCII format (add 0x30 to each numeric value to get ASCII digits)
    draw(hom10 + 0x30, 6);
    draw(hom01 + 0x30, 5);
+
+   //flag_home = 0;       //clear flag
 }
+
 
 /**
  * draw score visitors
  */
 void draw_score_visitors(){
 
-   //clear score visitor clock pixels
+   //clear pixels
    for (int i = 0 ; i < NUMPIXELS; i++) {
     digVis10.setPixelColor(i, 0);
     digVis01.setPixelColor(i, 0);
@@ -46,5 +72,6 @@ void draw_score_visitors(){
    //render score digits in ASCII format (add 0x30 to each numeric value to get ASCII digits)
    draw(vis10 + 0x30, 8);
    draw(vis01 + 0x30, 7);
-}
 
+   //flag_visitors = 0;       //clear flag
+}
