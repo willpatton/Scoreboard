@@ -67,7 +67,12 @@ void MyDateTime::dtInit(){
     Serial.println("CLOCK: Uninitialized clock");
     //Serial.println("MODE: Setting mode to CLOCK_SET");
     //mode = CLOCK_SET;
+
+    /**
+     * THIS SETS THE TIME
+     */
     //dt.initZulu("20190629T171300Z");      //Jun 29, 2019 5:13 PM
+    dt.initZulu("20191117T232000Z"); 
   }
 
   //refresh the 1-second counter 
