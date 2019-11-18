@@ -118,7 +118,6 @@ char cmdByte = NULL;              //this holds the active command byte.
 char cmdStr[32] = "";             //        "         "           str
 
 
-
 //SCORE
 int score_home = 0;               //0 to 99
 int score_visitors = 0;           //"    "
