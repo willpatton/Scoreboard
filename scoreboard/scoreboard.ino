@@ -11,13 +11,17 @@
  *  ADAFRUIT Grand Central SAMD51
  *  
  * Pixel Driver Shield V1.0
- *  switches
  * 
  * W2812B LEDs
  * 
- * nRF24L01 2.4GHz Radio
+ * nRF24L01 2.4GHz Radio (option)
+ *
+ * EEPROM (option)
  * 
  */
+ 
+//TIME
+#define TIME_TO_SET "20191201T215800Z"
 
  //DEBUG
 bool debug = true;
@@ -28,6 +32,13 @@ bool debug = true;
 
 //PROCESSOR
 //SAMD51   3.3V
+
+//EEPROM (option)
+//#define WILLEEPROM
+
+//nRF24L01 (option)
+
+
 
 //SHIELD
 #define SCOREBOARD_PROTOYPE true  //prototype 5V.  (No RTC, EEPROM. No mode switch)

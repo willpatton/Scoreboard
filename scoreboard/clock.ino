@@ -72,7 +72,9 @@ void MyDateTime::dtInit(){
      * THIS SETS THE TIME
      */
     //dt.initZulu("20190629T171300Z");      //Jun 29, 2019 5:13 PM
-    dt.initZulu("20191117T232000Z"); 
+    #ifdef TIME_TO_SET
+      dt.initZulu(TIME_TO_SET);
+    #endif
   }
 
   //refresh the 1-second counter 

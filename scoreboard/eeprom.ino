@@ -16,6 +16,7 @@
  * CHIP: CAT24C64WI-GT3
  * I2C address: 0x50
  */
+#ifdef WILLEEPROM
 
 #include <Wire.h>
 #include "Adafruit_FRAM_I2C.h"
@@ -65,3 +66,5 @@ void setup_eeprom(void) {
 void loop_eeprom(void) {
 
 }
+
+#endif
