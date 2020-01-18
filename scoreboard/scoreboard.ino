@@ -18,14 +18,25 @@
  *
  * EEPROM (option)
  * 
+ * Raspberry Pi interface (host interface option)
+ *
  */
  
-//TIME
-#define TIME_TO_SET "20191201T215800Z"
+//TIMEs
+#define TIME_TO_SET "20200102T214600Z"
 
  //DEBUG
-bool debug = true;
-#define POST false  //Power On Self Test (POST). Runs test patterns in setup()
+bool debug = false;
+#define POST true  //Power On Self Test (POST). Runs test patterns in setup()
+
+
+//IDENTIFICATION
+char const * NAME  = "SCOREBOARD";          //name or description
+char const * MODEL  = "SB001";              //model number
+char const * SERIAL_NUMBER  = "000001";     //the unique serial number of this device (6-bytes)
+char const * SOFTWARE_VERSION = "V0.1";     //to be changed each rev
+char const * SOFTWARE_DATE = __DATE__;      //__DATE__ + 7;
+char const * COPYRIGHT_YEAR = __DATE__ + 7;
 
 //BOARD
 //MEGA2560 5V
@@ -33,15 +44,17 @@ bool debug = true;
 //PROCESSOR
 //SAMD51   3.3V
 
-//EEPROM (option)
-//#define WILLEEPROM
 
 //nRF24L01 (option)
 
-
+//RASPI
+#define RASPI true               //enable Raspberry Pi features
+int raspi_getTime_flag = 0;       //1 = get time command pending
+int raspi_getTemp_flag = 0;       //1 = get temperature command pending
+String raspi_buffer;              //raspi incoming buffer
 
 //SHIELD
-#define SCOREBOARD_PROTOYPE true  //prototype 5V.  (No RTC, EEPROM. No mode switch)
+//#define SCOREBOARD_PROTOYPE true  //prototype 5V.  (No RTC, EEPROM. No mode switch)
 #define PIXELDRIVER false         //PCB: 9-CH, RTC, EEPROM, Mode switch.  5V or 3.3V
 
 //FONTS
@@ -169,8 +182,15 @@ void setup() {
 
   //SERIAL
   Serial.begin(115200);
-  delay(1500);
-  Serial.println("\nSCOREBOARD with PIXEL DRIVER board V2.0 \nsetup()...");
+  delay(1000);
+  Serial.print("\nSCOREBOARD ");
+  #ifndef PIXELXDRIVER
+  Serial.print("with MEGA... ");
+  #else
+  Serial.print("with PIXEL DRIVER board... "); 
+  #endif
+  Serial.println("V2.0 \n Begin setup()...");
+  
 
   //LED
   pinMode (LED_BUILTIN, OUTPUT);            //enable built-in LED (typically D13)
@@ -196,6 +216,11 @@ void setup() {
   //EEPROM
   if(PIXELDRIVER){
    setup_eeprom();                          //detect and setup, I2C device
+  }
+  
+  //RASPI
+  if(RASPI){
+    setup_raspi();
   }
 
   //DIGITS
@@ -262,7 +287,14 @@ void loop() {
     cmdByte = loop_RF24L01();   //always read pending commands from the nRF24L01
   }
 
-
+  //RasPi
+  if(RASPI){
+    //get Raspi command
+    loop_raspi();
+  }
+  
+  
+  
   //COMMANDS - byte
   switch (cmdByte) {            //process any pending commands
 
