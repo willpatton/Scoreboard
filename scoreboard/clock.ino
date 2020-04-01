@@ -14,7 +14,10 @@
  * constructor
  */
 MyDateTime::MyDateTime(){
+  
   //nothing yet
+  //dtInit();  //cannot use this here because serial ports are not initialized during constructor
+  timer_sec_base = (unsigned long)millis(); 
 }
 
 /**
@@ -24,6 +27,7 @@ MyDateTime::MyDateTime(){
 
 /**
  * setters
+ * Used by handheld remote
  */
 void MyDateTime::set_year(){
   year_++;
@@ -56,45 +60,44 @@ void MyDateTime::dtInit(){
   if(year1000_t < 0){
     //clear_all();
     Serial.println("DATE: Uninitialized date");
-    //Serial.println("MODE: Setting mode to DATE_SET");
-    //mode = DATE_SET; 
-    //dt.initZulu("20190101T120000Z");      //Jan 1, 2019 12:00.00 PM
   }
 
   //detect uninitialized clock
   if(hour10_t < 0){
-    //clear_all();
     Serial.println("CLOCK: Uninitialized clock");
-    //Serial.println("MODE: Setting mode to CLOCK_SET");
-    //mode = CLOCK_SET;
-
-    /**
-     * THIS SETS THE TIME
-     */
-    //dt.initZulu("20190629T171300Z");      //Jun 29, 2019 5:13 PM
-    #ifdef TIME_TO_SET
-      dt.initZulu(TIME_TO_SET);
-    #endif
   }
+  
+  /**
+  * THIS SETS THE TIME
+  */
+  initZulu(this->time_zulu);
 
-  //refresh the 1-second counter 
-  //dt.timer_sec = millis();       
+  //RESET the 1-second interval timer 
+  timer_sec_base = (unsigned long)millis();       
 }
 
 
 /**
- * init date and time by Zulu string
+ * 
  */
- void MyDateTime::initZulu(String timeString){
-  
-  //"yyyyMMddTHHmmssZ" 
-  //String timeString = "20190214T120300Z";
-  if (timeString[8] == 'T' && timeString[15] == 'Z') {
-    Serial.print("TIME INIT: "); Serial.println(timeString);
-    year_ = (timeString[0] - '0') * 1000 +
-    (timeString[1] - '0') * 100 +
-    (timeString[2] - '0') * 10 +
-    (timeString[3] - '0');
+void MyDateTime::initZulu(){
+  initZulu(this->time_zulu);
+}
+/**
+ * init date and time by Zulu string
+ * 
+ * ZULU FORMAT EXAMPLE:
+ * "yyyyMMddTHHmmssZ" 
+ * "20190214T120300Z"
+ */
+ void MyDateTime::initZulu(String zuluString){
+    
+  if (zuluString[8] == 'T' && zuluString[15] == 'Z') {
+    Serial.print("TIME ZULU INIT: "); Serial.println(zuluString);
+    year_ = (zuluString[0] - '0') * 1000 +
+    (zuluString[1] - '0') * 100 +
+    (zuluString[2] - '0') * 10 +
+    (zuluString[3] - '0');
     year_ =   NUM(0, 1000) + NUM(1, 100) + NUM(2, 10) + NUM(3, 1);
     month_ =  NUM(4, 10)   + NUM(5, 1);
     day_ =    NUM(6, 10)   + NUM(7, 1);
@@ -106,17 +109,53 @@ void MyDateTime::dtInit(){
 }
 
 
+/**
+ * loop datetime
+ * This keeps the date/time timebase always running
+ */
+
+bool MyDateTime::loop_dt(){
+  /*
+  //run this function every 1 second
+  unsigned long diff = millis() - timer_sec;
+  if(diff > 1000){
+      timer_sec = millis() + diff - 1000; //reset 1-second periodic timer
+      return true;
+  } 
+  return false;
+  */
+  //run this function every 1 second
+  uint32_t diff = (millis() - timer_sec_base);
+  if(diff > 1000){
+      //debug
+      //Serial.print("loop_clock() diff:");Serial.print(diff);Serial.print(" ");
+      //Serial.print(" timer_sec_base: ");Serial.print(timer_sec_base);Serial.print(" ");
+      //Serial.println();
+      timer_sec_base = millis(); 
+
+      //TODO - wcp
+      //if(mode == DATE){loop_date();}
+      //if(mode == CLOCK){loop_clock();}
+      loop_date();
+      loop_clock();
+      return true;
+  }
+    
+  return false; 
+}
 
 /*
  * date
  */
- void MyDateTime::loop_date(){ 
-   
+ void MyDateTime::loop_date(){
+  /*
   //only run this function every 1 second
-  if(millis() - dt.timer_sec < 1000){
+  if(millis() - timer_sec < 1000){
     return;
   } 
-  dt.timer_sec = millis(); //reset 1-second timer
+  timer_sec = millis(); //reset 1-second timer
+  */
+  //if(!loop_dt()){return;}
 
 
   //check limits
@@ -136,11 +175,11 @@ void MyDateTime::dtInit(){
       case 11 : {if(day_>30){day_ = 1;}break;} //Nov
       default : if(day_>31){day_ = 1;}
     }     
-    flag_clock = 1; //force refresh
+    flag_date = 1; //force refresh
   }
 
    //force refresh for all of these "date" digits
-   if(flag_clock){
+   if(flag_date){
       year1000_t  = -1;
       year100_t   = -1;
       year10_t    = -1;
@@ -149,13 +188,14 @@ void MyDateTime::dtInit(){
       month01_t   = -1;
       day10_t     = -1;
       day01_t     = -1;
-    flag_clock = 0; //clear
+      flag_clock = 0; //clear
    }
     
   //convert date to digits
   calc_date(); 
 
-  //render only the digits that have changed
+if(mode == DATE){
+  //RENDER only the digits that have changed
   Serial.print(year_);Serial.print("-");Serial.print(month_);Serial.print("-");Serial.print(day_);Serial.println(" ");
   draw(' ', 4);     //colon is digit offset 4.  Be sure colon is off for year
   if(year1000_t != year1000){draw(year1000  + 0x30, 3);}
@@ -167,6 +207,7 @@ void MyDateTime::dtInit(){
   if(month01_t != month01){draw(month01  + 0x30, 5);}
   if(day10_t != day10){draw(day10  + 0x30, 8);}
   if(day01_t != day01){draw(day01  + 0x30, 7);}
+}
 
   //SAVE - existing digit values for next loop
   year1000_t  = year1000;
@@ -178,35 +219,43 @@ void MyDateTime::dtInit(){
   day10_t     = day10;
   day01_t     = day01;
 
-}
+ }
 
 
 /**
  * time
  */
- void MyDateTime::loop_time(){
-
+ void MyDateTime::loop_clock(){
+  /*
   //only run this function every 1 second
-  if(millis() - dt.timer_sec < 1000){
+  if(millis() - timer_sec < 1000){
     return;
-  }
-  dt.timer_sec = millis(); //reset 1-second timer
+  } 
+  timer_sec = millis(); //reset 1-second timer
+  */
+  //if(!loop_dt()){return;}
 
 
-   //force refress for all of these clock values
+flag_clock = 1;
+   //DIGITS - force refresh for all clock digits
    if(flag_clock){
+      
       hour10_t  = -1;
       hour01_t  = -1;
       min10_t   = -1;
       min01_t   = -1;
       sec10_t   = -1;
       sec01_t   = -1;
-    flag_clock = 0; //clear
+      flag_clock = 0; //clear
+
+      //TEMP - only draw if flag set
+      if(mode == CLOCK){draw(':', 4);} //colon is digit offset 4. 
    }
    
   //convert time to digits
   calc_time(); 
 
+if(mode == CLOCK){
   //render digits in ASCII format (add 0x30 to each numeric value to get ASCII digits) 
   if(hour10_t != hour10){
    if(hour10 == 0) {draw(' ', 3);}     //detect 12am to 1am transition
@@ -217,15 +266,16 @@ void MyDateTime::dtInit(){
   if(min01_t != min01){draw(min01  + 0x30, 0);}
   if(sec10_t != sec10){draw(sec10  + 0x30, 8);}
   if(sec01_t != sec01){draw(sec01  + 0x30, 7);}
-  draw(':', 4); //colon is digit offset 4. 
-  
+  //draw(':', 4); //colon is digit offset 4. 
+
+   
   //render AM/PM 
   char vis10 = 'A';
   if(hours > 11){
   vis10 = 'P';
   }
   char vis01 = 'M';
-  draw(vis10, 6);
+  draw(vis10, 6);  //render only in CLOCK mode
   draw(vis01, 5);
   
   //DATE & TIME - echo to console
@@ -235,6 +285,8 @@ void MyDateTime::dtInit(){
   Serial.print(vis10);Serial.print(vis01); //AM or PM
   Serial.println();
 
+}//end render
+ 
   //SAVE - existing digit values for next loop
   hour10_t = hour10;
   hour01_t = hour01;
@@ -266,7 +318,7 @@ void MyDateTime::dtInit(){
   month01 = month_ - (month10 * 10);
   day10   = day_ / 10;
   day01   = day_ - (day10 * 10);
- }
+}
 
 
 /**
@@ -276,10 +328,10 @@ void MyDateTime::dtInit(){
  void MyDateTime::calc_time(){
   
   //TICK TOCK, INCREMENT THE CLOCK
-  if(mode == CLOCK){
+//wcp  if(mode == CLOCK){
     //only increment the clock if in CLOCK mode, skip for CLOCK_SET mode
     seconds++;
-  }
+//wcp  }
   
   if(seconds > 59){
     seconds = 0;
@@ -342,9 +394,9 @@ void MyDateTime::dtInit(){
  */
 void MyDateTime::timer_init(){
   
-    timerMillisClock = TIMER_RESET; //reset the clock's main timer. Holds the time remaining in milliseconds (e.g. 900000 milliseconds = 15 minutes)
-    dt.draw_timer();                   //render timer's digits to setup() values
-    timerElapsed = millis();        //init clock's timer
+    dt.timerMillisClock = TIMER_RESET; //reset the clock's main timer. Holds the time remaining in milliseconds (e.g. 900000 milliseconds = 15 minutes)
+    draw_timer();                   //render timer's digits to setup() values
+    dt.timerElapsed = millis();        //init clock's timer
     timerBuzzer = millis();         //init clock's buzzer
 }
 
@@ -382,10 +434,10 @@ void MyDateTime::draw_timer(){
  */
 void MyDateTime::calc_timer2minsec(){
 
-   int minutes = timerMillisClock / 60000;
+   int minutes = dt.timerMillisClock / 60000;
    min10 = (minutes / 10);
    min01 = minutes - (min10 * 10);
-   unsigned long milliseconds = timerMillisClock - (minutes * 60000);
+   unsigned long milliseconds = dt.timerMillisClock - (minutes * 60000);
    sec10 = milliseconds / 10000;
    sec01 = (milliseconds / 1000) - (sec10 * 10); 
 

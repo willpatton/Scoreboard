@@ -59,7 +59,7 @@ int parseCommands(char str[32]) {
       int focusR = 0;
       
       //command
-      if(strcmp("cmd",param) == 0){strcpy(cmdStr, value);}         //only 1 command
+      if(strcmp("cmd",param) == 0){strcpy(command, value);}         //only 1 command
       //screen
       if(strcmp("sc",param) == 0){screen = String(value).toInt();}  //only 1 screen  
       //switches
@@ -85,6 +85,6 @@ int parseCommands(char str[32]) {
       if(strcmp("fcR",param) == 0){focusR = String(value).toInt();}  
     }
 
-    Serial.print("MSG str:");Serial.print(str);Serial.print(" cmdStr: ");Serial.println(cmdStr); 
+    Serial.print("MSG str:");Serial.print(str);Serial.print(" command: ");Serial.println(command); 
     
 }//end fn

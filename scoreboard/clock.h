@@ -63,26 +63,28 @@
 #define MyDateTime_h
 
 //MACRO
-#define NUM(off, mult) ((timeString[(off)] - '0') * (mult))
+#define NUM(off, mult) ((zuluString[(off)] - '0') * (mult))
 
 //TIMEBASE - MILLISECONDS
 #define TIMER_TICK 1000           //The number of milliseconds in a timer tick. Used to establish a time base (refresh rate). 
                                   //(1000 = TIMER_TICK updates  1Hz once per second)
                                   //( 100 = TIMER_TICK updates 10Hz 10 times per second)
 
-//TODO - put in this class
-//TIMER
-int timerOnOff = 0;               //indicates if timer is ON or OFF. 1 = timer ON (running), 0 = timer OFF (stopped)
-unsigned long timerMillisClock;   //millisecond timer used to keep the SB timer's time remaining
-unsigned long timerElapsed = 0;   //millisecond timer to keep track of elapsed time (used by timer)
-
 
 class MyDateTime {
 
   private:
 
+    //TIME ZULU
+    //#define TIME_TO_SET "20200101T120000Z"  //Jan 1, 2020, 12:00.00 PM
+    String time_zulu = "20200101T120000Z";      //Jan 1, 2020, 12:00.00 PM
+    
+    //CLOCK TICK
+    unsigned long timer_sec = 0;   //millisecond timer used for clock/date timebase
+    //unsigned long timer_sec_base = 0;
+
     //DATE & TIME
-    int year_   = 2019;                 //year  YYYY
+    int year_   = 2020;                 //year  YYYY
     int month_  = 1;                    //month MM
     int day_    = 1;                    //day   DD
     int hours   = 0;                    //time  hh
@@ -122,17 +124,23 @@ class MyDateTime {
 
   public:
 
-    //TIME
-    unsigned long timer_sec;   //millisecond timer
+    //TODO - put in this class
+    //TIMER
+    int timerOnOff = 0;               //indicates if timer is ON or OFF. 1 = timer ON (running), 0 = timer OFF (stopped)
+    unsigned long timerMillisClock;   //millisecond timer used to keep the SB timer's time remaining
+    unsigned long timerElapsed = 0;   //millisecond timer to keep track of elapsed time (used by timer)
+
 
     MyDateTime();             
-    void dtInit();            
-    void initZulu(String timeString);
+    void dtInit();                    //used by constructor           
+    void initZulu();
+    void initZulu(String zuluString); 
+    bool loop_dt();
     void loop_date();
-    void loop_time();
+    void loop_clock();
 
     //setters
-    void set_year();          
+    void set_year();                  //Used by handheld remote         
     void set_month();
     void set_day();
     void set_hours();

@@ -22,8 +22,8 @@
  *
  */
  
-//TIMEs
-#define TIME_TO_SET "20200102T214600Z"
+//TIME ZULU
+//#define TIME_TO_SET "20200101T120000Z"
 
  //DEBUG
 bool debug = false;
@@ -34,7 +34,7 @@ bool debug = false;
 char const * NAME  = "SCOREBOARD";          //name or description
 char const * MODEL  = "SB001";              //model number
 char const * SERIAL_NUMBER  = "000001";     //the unique serial number of this device (6-bytes)
-char const * SOFTWARE_VERSION = "V0.1";     //to be changed each rev
+char const * SOFTWARE_VERSION = "0.1";      //numeric: to be changed each rev
 char const * SOFTWARE_DATE = __DATE__;      //__DATE__ + 7;
 char const * COPYRIGHT_YEAR = __DATE__ + 7;
 
@@ -46,6 +46,7 @@ char const * COPYRIGHT_YEAR = __DATE__ + 7;
 
 
 //nRF24L01 (option)
+#define NRF24 true
 
 //RASPI
 #define RASPI true               //enable Raspberry Pi features
@@ -114,6 +115,7 @@ uint8_t buttonC_hold_sec = 0;     //button clock time second counter
 //MODE
 //determines what the board should do (e.g. scoreboard, clock...)
 //mode is persistant until changed (run many)
+#define UNINITIALIZED - 1 //not yet 
 #define NOTHING     0   //do nothing. all off, quiet mode, power savings
 #define STANDBY     1   //mostly off (except for colon)
 #define TEST        2
@@ -125,21 +127,30 @@ uint8_t buttonC_hold_sec = 0;     //button clock time second counter
 #define DATE_SET    8   //time and date
 #define RTC         9   //show RTC 
 #define RTC_SET     10  //RTC is uninitialized, show interface to set RTC
-#define BUZZER      11  //activates buzzer
+//#define BUZZER      11  //activates buzzer
 #define TEMP        12  //temperature
 #define TUNER       13  //radio tuner AM/FM
 #define TICKER      14  //stock ticker    
 #define RANGE       15  //wireless range testing     
 #define MODE_MIN   SCOREBOARD
-#define MODE_MAX   DATE
-int mode = CLOCK;       //select one of the above modes
+#define MODE_MAX   CLOCK
+int mode = CLOCK;    //select one of the above modes
 int mode_last = -1;     //remembers the last mode. Used to detect changes or first time through. Default - unitialized 
 int flag_test = 0;      //flag for test mode
 
 //COMMAND
 //commands are cleared at the end of each loop (run once)
-char cmdByte = NULL;              //this holds the active command byte.  
-char cmdStr[32] = "";             //        "         "           str
+
+char buffer[256]    = "";
+char command[256]   = "";           //this holds the active command   str
+char cmdByte        = '\0';         //        "         "         byte.  
+char data[256]      = "";
+char units[32]      = "";
+//char station[32]  = "";
+//char stock[8]     = "";           //MSFT, AMZN, GOOG
+//char stockval[8]  = "";           //208, 1444
+//char stockper[8]  = "";           //percent 1.5  10.1
+//char stockdir[8]  = "";           //direction pos(grn), neg(red)
 
 
 //SCORE
@@ -154,7 +165,10 @@ int flag_scoreboard = 0;          //1=refresh
 #include "clock.h"
 MyDateTime dt;                    
 int flag_clock = 0;                //1=refresh
+int flag_date = 0;                //1=refresh
 int flag_timer = 0;                //1=refresh
+char current_zulu[32];    
+unsigned long timer_sec_base = 0;
 
 //RTC
 int flag_rtc = 0;                 //1=detected, 0=not found
@@ -172,7 +186,8 @@ int range_c = 0;                  //a generic counter used for testing the RF24L
 
 
 //PERFORMANCE MONITORS
-unsigned long loop_timer = millis();
+#define PERFMON false
+unsigned long loop_timer = 0; 
 
 
 /**
@@ -181,15 +196,15 @@ unsigned long loop_timer = millis();
 void setup() {
 
   //SERIAL
-  Serial.begin(115200);
+  Serial.begin(19200);            //19.2K is fast as possible.  38.4k has errors.
   delay(1000);
   Serial.print("\nSCOREBOARD ");
   #ifndef PIXELXDRIVER
-  Serial.print("with MEGA... ");
+  Serial.print("MEGA 2560");
   #else
   Serial.print("with PIXEL DRIVER board... "); 
   #endif
-  Serial.println("V2.0 \n Begin setup()...");
+  Serial.println("\nBegin setup()");
   
 
   //LED
@@ -206,8 +221,10 @@ void setup() {
   digitalWrite(BUZZER, HIGH);               //init to off.  Active low. 0=ON, 1=OFF
          
   //nRF24L01
-  setup_RF24L01();                          //setup nRF24
-
+  if(NRF24){
+    setup_RF24L01();                          //setup nRF24
+  }
+  
   //RTC
   if(PIXELDRIVER){
     flag_rtc = setup_rtc();                 //detect and setup, I2C device
@@ -247,20 +264,19 @@ void setup() {
 
   //SCOREBOARD
   if(mode == SCOREBOARD){
-    scoreboard_init();        //scoring
-    dt.timer_init();             //timing
+    scoreboard_init();           //init scoring
+    //dt.timer_init();             //init timer
+  }
+  delay(120);
+
+  //CLOCK DATE TIME 
+  if(0){ 
+    dt.dtInit();                 //init set date and time
   }
 
-  //DATE TIME 
-  if(1){ 
-    dt.dtInit();             //override - set date and time
-  }
-  dt.timer_sec = millis();     //begin clock/cal timebase
-
-
-  //TIMER
-  if(0){
-    dt.timer_init();             //this feature is part of the scoreboard
+  //TIMERS/COUNTERS
+  if(PERFMON){
+    loop_timer = millis();        //init
   }
 
 }//end setup
@@ -283,19 +299,27 @@ void loop() {
 
 
   //nRF24
-  if(1) {
+  if(NRF24 && !cmdByte) {
     cmdByte = loop_RF24L01();   //always read pending commands from the nRF24L01
   }
 
-  //RasPi
-  if(RASPI){
+
+  //USB, RasPi
+  if(RASPI && !cmdByte){
     //get Raspi command
-    loop_raspi();
+    cmdByte = loop_raspi();
+    //if(cmdByte){Serial.print("Got a RASPI byte: ");Serial.println(cmdByte);}
   }
-  
-  
-  
-  //COMMANDS - byte
+
+  //COMMAND STRINGS
+  //see "raspi" file
+  //
+  //$SB<?&cmd=m
+  //$RASPI>?&cmd=m
+
+   
+    
+  //COMMAND BYTE
   switch (cmdByte) {            //process any pending commands
 
     //mode - increment
@@ -353,35 +377,35 @@ void loop() {
       }
 
     //time set to known state  
-    case 'O' :{ timerOnOff = 1; break;}  //timer on
-    case 'o' :{ timerOnOff = 0; break;}  //timer off
+    case 'O' :{ dt.timerOnOff = 1; break;}  //timer on
+    case 'o' :{ dt.timerOnOff = 0; break;}  //timer off
     
     //timer and clock reset
     case 'C' : {
         if(mode == DATE || mode == DATE_SET || mode == CLOCK || mode == CLOCK_SET){
           Serial.println("RESETTING DATE/CLOCK: ");
-          //timerOnOff = 0;                     //set to off    
-          dt.initZulu("20190701T120304Z");      //YYYYMMddThhmmss, July 1, 2019 12:03.04 PM
+          //timerOnOff = 0;       //set to off    
+          dt.initZulu();          //YYYYMMddThhmmssZ
           break;
         }
         
         buttonC_hold_sec++;  //inc this counter each time the 'C' command is detected (about once per second)
 
         if (buttonC_hold_sec > 1 && buttonC_hold_sec < 3) {
-          timerMillisClock = 0; //TIMER_RESET; /*reset timer*/ 
+          dt.timerMillisClock = 0; //TIMER_RESET; /*reset timer*/ 
         }
         if ((buttonC_hold_sec > 3 ) /*&& (buttonC_hold_sec & 0x01)*/) {  // more than N sec, then every odd numbered second
-          timerMillisClock += ADD_TIME_TO_TIMER;
+          dt.timerMillisClock += ADD_TIME_TO_TIMER;
         }
         
         //limit timer to 90 min MAX
-        if (timerMillisClock > 5400000 ) {
-          timerMillisClock = 5400000 ;
+        if (dt.timerMillisClock > 5400000 ) {
+          dt.timerMillisClock = 5400000 ;
         }   
-        timerOnOff = 0;     //set timer to OFF during reset
+        dt.timerOnOff = 0;     //set timer to OFF during reset
         dt.calc_timer2minsec();
         dt.draw_timer();       //refresh timer display after reset or when timer timer is OFF
-        Serial.print("TIMER RESET TO: "); Serial.println(timerMillisClock);
+        Serial.print("TIMER RESET TO: "); Serial.println(dt.timerMillisClock);
         break;
       }
       
@@ -394,11 +418,11 @@ void loop() {
         }    
         
         //if time remaining, then it's okay to start/stop the timer here
-        if (timerMillisClock) {
-          timerOnOff = timerOnOff ^ 1;    //bitwise toggle
+        if (dt.timerMillisClock) {
+          dt.timerOnOff = dt.timerOnOff ^ 1;    //bitwise toggle
         }
         Serial.print("TIMER: ");
-        if (timerOnOff) {
+        if (dt.timerOnOff) {
           Serial.println("ON");
         } else {
           Serial.println("OFF");
@@ -443,7 +467,7 @@ void loop() {
         break;
       }
     case 'z' : {
-        dt.loop_time();      //time
+        dt.loop_clock();      //time
         break;
       }
 
@@ -475,28 +499,26 @@ void loop() {
   }//end switch
 
 
-  //COMMANDS - string
-  
-
   //MODE 
-  if(mode != mode_last){        //detect mode changes, set flags to force refresh
-    Serial.print("MODE: ");      
+  //detect mode changes, set flags to force refresh
+  if(mode != mode_last){        
+    Serial.print("MODE: "); Serial.print(mode); Serial.print(" ");
     switch(mode){
-      case NOTHING    : {Serial.println("NOTHING");break;}
-      case STANDBY    : {Serial.println("STANDBY");break;}
-      case SCOREBOARD : {Serial.println("SCOREBOARD");flag_scoreboard = 1;break;}
-      case CLOCK      : {Serial.println("CLOCK");     flag_clock = 1;break;}
-      case CLOCK_SET  : {Serial.println("CLOCK_SET"); flag_clock = 1;break;}
-      case DATE       : {Serial.println("DATE");      flag_clock = 1;break;}
-      case DATE_SET   : {Serial.println("DATE_SET");  flag_clock = 1;break;}
-      case TIMER      : {Serial.println("TIMER");break;}
-      //case CALENDAR   : {Serial.println("CALENDAR");break;}
-      //case RTC        : {Serial.println("RTC_SET");break;}   
-      case TEST       : {Serial.println("TEST");flag_test = 1;break;}
-      default         : {Serial.println("INVALID");}
-    }
-  }
-
+      //case NOTHING    : {Serial.print("NOTHING");break;}
+      //case STANDBY    : {Serial.print("STANDBY");break;}
+      case SCOREBOARD : {Serial.print("SCOREBOARD");flag_scoreboard = 1;break;}
+      case CLOCK      : {Serial.print("CLOCK");     flag_clock = 1;break;}
+      //case CLOCK_SET  : {Serial.print("CLOCK_SET"); flag_clock = 1;break;}
+      case DATE       : {Serial.print("DATE");      flag_date = 1;break;}
+      //case DATE_SET   : {Serial.print("DATE_SET");  flag_clock = 1;break;}
+      case TIMER      : {Serial.print("TIMER");break;}
+      ////case CALENDAR   : {Serial.print("CALENDAR");break;}
+      ////case RTC        : {Serial.print("RTC_SET");break;}   
+      case TEST       : {Serial.print("TEST");flag_test = 1;break;}
+      default         : {Serial.print("INVALID");}
+    }//end sw
+    Serial.println();
+  }//end cmp
 
   /**
    * RENDERING
@@ -541,40 +563,39 @@ void loop() {
     flag_rtc = 0;               //clear
   }
 
-  //CLOCK SET
-  if(mode == CLOCK_SET){
-    dt.dtInit();                //a user interface for setting the clock
-    //dt.loop_time();             //refresh clock
+  //CLOCK/DATE
+  if(mode == CLOCK_SET || mode == DATE_SET){
+    dt.dtInit();                //init the clock/calendar
   }
+
+  //WORK IN PROGRESS DATE TIME TIMEBASE
+  //always keep the clock ticking regardless of mode
+  bool refresh_dt = dt.loop_dt();
+
 
   //CLOCK 
-  if(mode == CLOCK){
-    dt.loop_time();             //refresh clock
-  }
-
-  //DATE SET
-  if(mode == DATE_SET){
-    dt.dtInit();               //a user interface for setting the date
-    //dt.loop_date();            //refresh date
+  if((mode == CLOCK) && refresh_dt){
+//wcp   dt.loop_clock();             //render clock
   }
 
   //DATE 
-  if(mode == DATE){
-    dt.loop_date();             //refresh date
+  if((mode == DATE) && refresh_dt){
+//wcp    dt.loop_date();             //render date
   }
+
 
   //TIMER
   //TIMER TICK - establishes the number of times the timer will update per second 
-  if ((mode == SCOREBOARD || mode == TIMER) && timerOnOff && (millis() - timerElapsed) > TIMER_TICK) {
+  if ((mode == SCOREBOARD || mode == TIMER) && dt.timerOnOff && (millis() - dt.timerElapsed) > TIMER_TICK) {
 
     //LIMIT - check for limit beyond MAX
-    if (timerMillisClock > 5400000 ) {
-      timerMillisClock = 5400000 ;
+    if (dt.timerMillisClock > 5400000 ) {
+      dt.timerMillisClock = 5400000 ;
     }
 
     //TICK - decrement the timer's time remaining by one timer tick
-    timerMillisClock -= TIMER_TICK;   //subtracts a timer tick (milliseconds) from the time remaining
-    timerElapsed = millis();          //reset elapsed time since for the next timer tick
+    dt.timerMillisClock -= TIMER_TICK;   //subtracts a timer tick (milliseconds) from the time remaining
+    dt.timerElapsed = millis();          //reset elapsed time since for the next timer tick
     
     //RENDER - draw the timer upon each tick
     //flag_timer = 1;
@@ -582,9 +603,9 @@ void loop() {
     dt.draw_timer();
     
     //EXPIRED - if timer is on and remaining time is zero, then time just expired. Trigger buzzer
-    if (timerMillisClock <= 0 ) {
+    if (dt.timerMillisClock <= 0 ) {
       Serial.println("TIMER EXPIRED");
-      timerOnOff = 0;                 //STOP timer
+      dt.timerOnOff = 0;                 //STOP timer
       flag_buzzer = true;             //buzzer to ON
       timerBuzzer = millis();
     }
@@ -605,16 +626,24 @@ void loop() {
   }
 
 
+  //DEBUG
+  //Serial.print("mode: ");Serial.println(mode);
+
   //CLEAR
   cmdByte = NULL;             //clear the active command each time through the main loop (so commands only run once)
-  strcpy(cmdStr,NULL);
+  strcpy(buffer,"");
+  strcpy(data,"");
+  strcpy(command,"");
   mode_last = mode;           //detect mode changes
 
 
   //LOOP
-  if(0){
+  if(PERFMON){
     //loop performance monitor
-    Serial.print("loop_timer: ");Serial.print(millis() - loop_timer);  Serial.print(" msec"); 
+    //Serial.print("loop_timer: ");Serial.print(millis() - loop_timer);Serial.println(" sec");
+    loop_timer = millis();   
   }
+
+  //delay(20);//???
 
 }//end main loop
