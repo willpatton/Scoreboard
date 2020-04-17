@@ -39,10 +39,10 @@ char const * SOFTWARE_DATE = __DATE__;      //__DATE__ + 7;
 char const * COPYRIGHT_YEAR = __DATE__ + 7;
 
 //BOARD
-//MEGA2560 5V
+//#define MEGA2560 //5V
 
 //PROCESSOR
-//SAMD51   3.3V
+//#define SAMD51   //3.3V
 
 
 //nRF24L01 (option)
@@ -57,6 +57,7 @@ String raspi_buffer;              //raspi incoming buffer
 //SHIELD
 //#define SCOREBOARD_PROTOYPE true  //prototype 5V.  (No RTC, EEPROM. No mode switch)
 #define PIXELDRIVER false         //PCB: 9-CH, RTC, EEPROM, Mode switch.  5V or 3.3V
+
 
 //FONTS
 #include "fonts.h"      //custom fonts for 5x7 pixels arrays
@@ -91,10 +92,10 @@ Adafruit_NeoPixel digHom10 = Adafruit_NeoPixel(NUMPIXELS, HOM10, NEO_RGB + NEO_K
 Adafruit_NeoPixel digVis01 = Adafruit_NeoPixel(NUMPIXELS, VIS01, NEO_RGB + NEO_KHZ800); //7
 Adafruit_NeoPixel digVis10 = Adafruit_NeoPixel(NUMPIXELS, VIS10, NEO_RGB + NEO_KHZ800); //8
 
-//PIXEL DRIVER 
-#define NEO_LOCAL      49  
-Adafruit_NeoPixel neoLocal = Adafruit_NeoPixel(3, NEO_LOCAL, NEO_RGB + NEO_KHZ800);     //3 pixels on-board
-
+//NEO LOCAL (ON-BOARD) NEOPIXELS (3 qty) 
+#define NEO_LOCAL_PIN      49  
+Adafruit_NeoPixel neoLocal = Adafruit_NeoPixel(3, NEO_LOCAL_PIN, NEO_RGB + NEO_KHZ800);     //3 pixels on-board
+#define NEO_LOCAL_BRT     255
 
 //BUTTONS
 #define BUTTON_MODE A12           //MEGA pins
@@ -198,6 +199,8 @@ void setup() {
 
   //SERIAL
   Serial.begin(19200);            //19.2K is fast as possible.  38.4k has errors.
+                                  //CONSOLE USB - GRAND CENTRAL - THIS DOES NOT GO TO A PIN, it goes to the CONSOLE ONLY
+  Serial1.begin(115200);  //DEBUG - GRAND CENTRAL - THIS GOES TO TX0/RX0 
   delay(1000);
   Serial.print("\nSCOREBOARD ");
   #ifndef PIXELXDRIVER
@@ -206,7 +209,7 @@ void setup() {
   Serial.print("with PIXEL DRIVER board... "); 
   #endif
   Serial.println("\nBegin setup()");
-  
+  Serial1.println("\nDEBUG pixel board port..."); 
 
   //LED
   pinMode (LED_BUILTIN, OUTPUT);            //enable built-in LED (typically D13)
@@ -252,9 +255,21 @@ void setup() {
   digVis01.begin();  //score visitors 1's
   digVis10.begin();  //score visitors 10's
 
+  //NEOPIXELS
   neoLocal.begin();  //PIXEL DRIVER 3-pixels on-board
-
-
+  for(int j=0; j<64; j++){
+    for(int i=0; i<3; i++){
+      neoLocal.setPixelColor(i, random(0,255), random(0,255), random(0,255)); 
+      neoLocal.show(); 
+    }
+    delay(50);
+  }
+  //OFF
+  for(int i=0; i<3; i++){
+      neoLocal.setPixelColor(i,0,0,0);    
+  }
+  neoLocal.show(); 
+ 
   //POWER-ON SELF TEST - run test pattern(s) - also helpful to indicate unexpected reboots
   if(POST) {
     random_beauty();
@@ -557,11 +572,9 @@ void loop() {
   //RTC
   if(mode == RTC){
 
-    loop_rtc();              //display RTC values
-    
-    if(flag_rtc){
-       //TODO use RTC valuse for clock, date and time
-    }
+    //loop_rtc();              //display RTC values
+    Serial.print("RTCZ: ");
+    Serial.println(rtcZulu);
 
     flag_rtc = 0;               //clear
   }
