@@ -1,4 +1,7 @@
+.gitignore
 .DS_Store
+__pycache__
+.idea
 
 # Compiled class file
 *.class
