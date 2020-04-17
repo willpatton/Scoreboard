@@ -23,7 +23,7 @@
  */
  
 //TIME ZULU
-//#define TIME_TO_SET "20200101T120000Z"
+#define TIME_TO_SET "20200101T120000Z"
 
  //DEBUG
 bool debug = false;
@@ -172,7 +172,8 @@ unsigned long timer_sec_base = 0;
 
 //RTC
 int flag_rtc = 0;                 //1=detected, 0=not found
-
+char rtcZulu[] = TIME_TO_SET;
+char * rtcZulu_ptr = rtcZulu;
 
 //BUZZER relay
 #define BUZZER A7                 //MEGA analog pin A7 OUTPUT
@@ -269,9 +270,11 @@ void setup() {
   }
   delay(120);
 
-  //CLOCK DATE TIME 
-  if(0){ 
-    dt.dtInit();                 //init set date and time
+
+  //DATE TIME 
+  if(flag_rtc){   //rtc
+    getRTCZulu(rtcZulu_ptr);
+    dt.initZulu(rtcZulu);                 //init set date and time
   }
 
   //TIMERS/COUNTERS
