@@ -34,8 +34,8 @@ uint8_t loop_raspi(){
     
       String incoming = Serial.readStringUntil('\n');
       incoming.trim();
-      if(incoming.length() < 1){return;}
-      if(incoming.length() >= sizeof(buffer)){return;}
+      if(incoming.length() < 1){return(NULL);}
+      if(incoming.length() >= sizeof(buffer)){return(NULL);}
       strncpy(buffer,incoming.c_str(),sizeof(buffer));
       if(debug_){
         Serial.print("\nbuffer: "); Serial.print(buffer); Serial.print(" bytes: "); Serial.println(strlen(buffer)); 
