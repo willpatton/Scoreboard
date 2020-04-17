@@ -26,20 +26,37 @@ bool setup_rtc () {
   if (detected = rtc.begin()) {
     Serial.print("FOUND "); 
   }
-
-  //INIT - initialize the RTC upon 1st time use
-  if (!rtc.initialized()) {
-    Serial.print("First time initialization. ");
-    // following line sets the RTC to the date & time this sketch was compiled
-    rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
-    // This line sets the RTC with an explicit date & time, for example to set
-    // January 21, 2014 at 3am you would call:
-    // rtc.adjust(DateTime(2014, 1, 21, 3, 0, 0));  
-  }
+  
+  //FORCE RTC
+  //force RTC update from computer time
+  rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
 
   Serial.println("COMPLETE ");
 
   return(detected);
+}
+
+
+/**
+ * @breif get time from RTC and return a Zulu string
+ */
+void getRTCZulu(char * strZulu){
+  //Serial.print("\nstrZulu: ");
+  DateTime now = rtc.now();
+  char MM[3];
+  sprintf(MM, "%02d", now.month());
+  char DD[3];
+  sprintf(DD, "%02d", now.day());
+  char hh[3];
+  sprintf(hh, "%02d", now.hour());
+  char mm[3];
+  sprintf(mm, "%02d", now.minute());
+  char ss[3];
+  sprintf(ss, "%02d", now.day()); 
+  String str = String(String(now.year()) + String(MM) + String(DD) + String('T'));
+  str = String(str + String(hh) + String(mm) + String(ss) + String('Z'));
+  //Serial.println(str);
+  strcpy(strZulu, str.c_str()); //str.c_str()
 }
 
 
@@ -57,14 +74,5 @@ bool setup_rtc () {
   
   DateTime now = rtc.now();
 
-  //TODO - wcp moved to class
-  /*
-  year_ = now.year();
-  month_ = now.month();
-  day_ = now.day();
-  hours = now.hour();
-  minutes = now.minute();
-  seconds = now.second();
-  */
   
  }

@@ -296,7 +296,7 @@ void primary_colors(){
       digHom10.setPixelColor(i, r, g, b); digHom10.show(); //10's
       digVis01.setPixelColor(i, r, g, b); digVis01.show(); //score visitor 1's
       digVis10.setPixelColor(i, r, g, b); digVis10.show(); //10's
-      neoLocal.setPixelColor(i, r, g, b); neoLocal.show(); //10's
+      neoLocal.setPixelColor(i, r, g, b); neoLocal.show(); //
     }
     delay(700);
    }
