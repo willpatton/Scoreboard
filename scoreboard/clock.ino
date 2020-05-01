@@ -160,21 +160,21 @@ bool MyDateTime::loop_dt(){
 
   //check limits
   if(1){
-    if(month_ > 12){month_ = 1;}        //rollover to 1
     switch(month_){
       case 2 : { 
         //Feb
         if((year_ % 4) == 0){
-          if(day_ > 2){day_ = 1;}break; //leap year
+          if(day_ > 2){month_++;day_ = 1;}break; //leap year
           } 
-        if(day_ > 28){day_ = 1;} break; //not leap year
+        if(day_ > 28){month_++;day_ = 1;} break; //not leap year
         } 
       case 4 : //Apr
       case 6 : //Jun 
       case 9 : //Sep
-      case 11 : {if(day_>30){day_ = 1;}break;} //Nov
-      default : if(day_>31){day_ = 1;}
-    }     
+      case 11 : {if(day_>30){month_++;day_ = 1;}break;} //Nov
+      default : if(day_>31){month_++;day_ = 1;}
+    } 
+    if(month_ > 12){month_ = 1;}        //rollover to 1    
     flag_date = 1; //force refresh
   }
 
